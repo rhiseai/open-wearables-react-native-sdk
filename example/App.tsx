@@ -1,8 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useEvent } from "expo";
-import OpenWearablesHealthSDK, {
-  HealthDataType,
-} from "open-wearables";
+import OpenWearablesHealthSDK, { HealthDataType } from "open-wearables";
 import { useEffect, useState } from "react";
 import {
   Alert,

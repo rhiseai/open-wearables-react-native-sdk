@@ -12,6 +12,12 @@ export type AuthErrorEventPayload = {
   message: string;
 };
 
+export enum OWLogLevel {
+  None = 0,
+  Always = 1,
+  Debug = 2,
+}
+
 export enum HealthDataType {
   // Activity & Mobility
   Steps = "steps",

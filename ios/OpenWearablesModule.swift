@@ -120,5 +120,15 @@ public class OpenWearablesModule: Module {
         Function("getAvailableProviders") { return [] }
         
         Function("setProvider") { }
+
+        // MARK: - Logs
+        Function("setLogLevel") { (levelId: Int) in
+            let level = OWLogLevel(rawValue: levelId) ?? .always
+            OpenWearablesHealthSDK.shared.setLogLevel(level)
+        }
+
+        Function("getLogLevel") {
+            return OpenWearablesHealthSDK.shared.logLevel.rawValue
+        }
     }
 }

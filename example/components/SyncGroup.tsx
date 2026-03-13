@@ -6,14 +6,17 @@ import { Group } from "./Group";
 
 export function SyncGroup() {
   const [lastSyncedAt, setLastSyncedAt] = useState<Date | null>(null);
-
-  const isSyncActive = Boolean(OpenWearablesHealthSDK.isSyncActive());
+  const [isSyncActive, setIsSyncActive] = useState(() =>
+    Boolean(OpenWearablesHealthSDK.isSyncActive())
+  );
 
   const toggleBackgroundSync = async () => {
     if (isSyncActive) {
       await OpenWearablesHealthSDK.stopBackgroundSync();
+      setIsSyncActive(false);
     } else {
-      await OpenWearablesHealthSDK.startBackgroundSync(null);
+      const started = await OpenWearablesHealthSDK.startBackgroundSync(null);
+      setIsSyncActive(started ? started : true); // Android is returning null
     }
   };
 

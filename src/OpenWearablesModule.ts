@@ -3,6 +3,7 @@ import {
   HealthDataType,
   OpenWearablesModuleEvents,
   HealthDataProvider,
+  OWLogLevel,
 } from "./OpenWearables.types";
 
 declare class OpenWearablesModule extends NativeModule<OpenWearablesModuleEvents> {
@@ -38,6 +39,10 @@ declare class OpenWearablesModule extends NativeModule<OpenWearablesModuleEvents
   // MARK: - Providers
   getAvailableProviders(): HealthDataProvider[];
   setProvider(providerId: string): boolean;
+
+  // MARK: - Logs
+  setLogLevel(logLevel: OWLogLevel): void;
+  getLogLevel(): OWLogLevel;
 }
 
 // This call loads the native module object from the JSI.

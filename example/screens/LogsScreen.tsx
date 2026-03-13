@@ -2,6 +2,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useState } from "react";
 import {
   FlatList,
+  Platform,
   Pressable,
   StyleSheet,
   Text,
@@ -10,6 +11,11 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { LogEntry } from "../hooks/useLogs";
+import OpenWearablesHealthSDK, {
+  OWLogLevel,
+  OWLogLevelLabel,
+} from "open-wearables";
+import { OptionSelector, SelectorOption } from "../components/OptionSelector";
 
 interface LogsScreenProps {
   logs: LogEntry[];
@@ -17,16 +23,37 @@ interface LogsScreenProps {
   onBack: () => void;
 }
 
+const LOG_LEVEL_OPTIONS: SelectorOption[] = (
+  Object.values(OWLogLevel).filter((v) => typeof v === "number") as OWLogLevel[]
+).map((level) => ({
+  id: String(level),
+  title: OWLogLevelLabel[level],
+}));
+
 export function LogsScreen({ logs, onClearLogs, onBack }: LogsScreenProps) {
   const [search, setSearch] = useState("");
+  const [logLevel, setLogLevel] = useState<OWLogLevel>(() =>
+    OpenWearablesHealthSDK.getLogLevel()
+  );
   const insets = useSafeAreaInsets();
+
+  const handleLogLevelSelect = (id: string) => {
+    const level = Number(id) as OWLogLevel;
+    setLogLevel(level);
+    OpenWearablesHealthSDK.setLogLevel(level);
+  };
 
   const filtered = search.trim()
     ? logs.filter((e) => e.message.toLowerCase().includes(search.toLowerCase()))
     : logs;
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
+    <View
+      style={[
+        styles.container,
+        { paddingTop: insets.top, paddingBottom: insets.bottom },
+      ]}
+    >
       {/* Navbar */}
       <View style={styles.navbar}>
         <Pressable onPress={onBack} style={styles.navButton} hitSlop={8}>
@@ -57,6 +84,18 @@ export function LogsScreen({ logs, onClearLogs, onBack }: LogsScreenProps) {
           clearButtonMode="while-editing"
         />
       </View>
+
+      {/* Log level selector (iOS only) */}
+      {Platform.OS === "ios" && (
+        <View style={styles.logLevelContainer}>
+          <Text style={styles.logLevelLabel}>Log Level</Text>
+          <OptionSelector
+            options={LOG_LEVEL_OPTIONS}
+            selectedId={String(logLevel)}
+            onSelect={handleLogLevelSelect}
+          />
+        </View>
+      )}
 
       {/* Log list */}
       <FlatList
@@ -132,6 +171,18 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 15,
     color: "#FFFFFF",
+  },
+  logLevelContainer: {
+    marginHorizontal: 12,
+    marginBottom: 12,
+    gap: 8,
+  },
+  logLevelLabel: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#8E8E93",
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
   },
   list: {
     paddingHorizontal: 12,
