@@ -13,9 +13,10 @@ const styles = StyleSheet.create({
   groupHeader: {
     fontSize: 20,
     marginBottom: 8,
+    color: "#FFFFFF",
   },
   group: {
-    backgroundColor: "#fff",
+    backgroundColor: "#1C1C1E",
     borderRadius: 10,
     padding: 20,
     gap: 8,

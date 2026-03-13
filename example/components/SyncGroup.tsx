@@ -1,27 +1,25 @@
-import OpenWearables from "open-wearables";
+import OpenWearablesHealthSDK from "open-wearables";
+import { useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 import { Button, Colors } from "./Button";
 import { Group } from "./Group";
 
-export function SyncGroup({
-  syncActive,
-  onRefresh,
-}: {
-  syncActive: boolean;
-  onRefresh: () => void;
-}) {
+export function SyncGroup() {
+  const [lastSyncedAt, setLastSyncedAt] = useState<Date | null>(null);
+
+  const isSyncActive = Boolean(OpenWearablesHealthSDK.isSyncActive());
+
   const toggleBackgroundSync = async () => {
-    if (syncActive) {
-      OpenWearables.stopBackgroundSync();
+    if (isSyncActive) {
+      await OpenWearablesHealthSDK.stopBackgroundSync();
     } else {
-      await OpenWearables.startBackgroundSync();
+      await OpenWearablesHealthSDK.startBackgroundSync(null);
     }
-    onRefresh();
   };
 
   const handleSyncNow = async () => {
-    await OpenWearables.syncNow();
-    onRefresh();
+    await OpenWearablesHealthSDK.syncNow();
+    setLastSyncedAt(new Date());
   };
 
   return (
@@ -29,16 +27,27 @@ export function SyncGroup({
       <View style={styles.row}>
         <Text style={styles.label}>Background Sync</Text>
         <Button
-          title={syncActive ? "Stop" : "Start"}
-          color={syncActive ? Colors.destructive : Colors.positive}
+          title={isSyncActive ? "Stop" : "Start"}
+          color={isSyncActive ? Colors.destructive : Colors.positive}
           onPress={toggleBackgroundSync}
         />
       </View>
       <Button
         title="Manual Sync"
-        disabled={syncActive}
+        disabled={isSyncActive}
         onPress={handleSyncNow}
       />
+      {lastSyncedAt != null && (
+        <Text style={styles.lastSync}>
+          Last sync:{" "}
+          {lastSyncedAt.toLocaleDateString(undefined, {
+            month: "short",
+            day: "numeric",
+            year: "numeric",
+          })}{" "}
+          at {lastSyncedAt.toLocaleTimeString()}
+        </Text>
+      )}
     </Group>
   );
 }
@@ -51,5 +60,11 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: 16,
+    color: "#FFFFFF",
+  },
+  lastSync: {
+    fontSize: 12,
+    color: "#8E8E93",
+    textAlign: "right",
   },
 });
