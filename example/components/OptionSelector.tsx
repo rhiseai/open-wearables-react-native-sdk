@@ -1,3 +1,4 @@
+import { Ionicons } from "@expo/vector-icons";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
 export type SelectorOption = {
@@ -5,6 +6,8 @@ export type SelectorOption = {
   title: string;
   description?: string;
   disabled?: boolean;
+  iconName?: string;
+  iconBgColor?: string;
 };
 
 interface OptionSelectorProps {
@@ -13,11 +16,7 @@ interface OptionSelectorProps {
   onSelect: (id: string) => void;
 }
 
-export function OptionSelector({
-  options,
-  selectedId,
-  onSelect,
-}: OptionSelectorProps) {
+export function OptionSelector({ options, selectedId, onSelect }: OptionSelectorProps) {
   return (
     <View style={styles.container}>
       {options.map((option, index) => {
@@ -36,26 +35,35 @@ export function OptionSelector({
             onPress={() => !option.disabled && onSelect(option.id)}
             disabled={option.disabled}
           >
-            <View style={styles.content}>
-              <Text
-                style={[styles.title, option.disabled && styles.textDisabled]}
+            {option.iconName != null && (
+              <View
+                style={[
+                  styles.iconBox,
+                  { backgroundColor: option.iconBgColor ?? "#3A3A3C" },
+                ]}
               >
+                <Ionicons
+                  name={option.iconName as any}
+                  size={20}
+                  color={option.disabled ? "#555558" : "#FFFFFF"}
+                />
+              </View>
+            )}
+            <View style={styles.content}>
+              <Text style={[styles.title, option.disabled && styles.textDisabled]}>
                 {option.title}
               </Text>
               {option.description != null && (
-                <Text
-                  style={[
-                    styles.description,
-                    option.disabled && styles.textDisabled,
-                  ]}
-                >
+                <Text style={[styles.description, option.disabled && styles.textDisabled]}>
                   {option.description}
                 </Text>
               )}
             </View>
-            <View
-              style={[styles.circle, isSelected && styles.circleSelected]}
-            />
+            <View style={[styles.circle, isSelected && styles.circleSelected]}>
+              {isSelected && (
+                <Ionicons name="checkmark" size={14} color="#FFFFFF" />
+              )}
+            </View>
           </Pressable>
         );
       })}
@@ -104,6 +112,13 @@ const styles = StyleSheet.create({
   textDisabled: {
     color: "#48484A",
   },
+  iconBox: {
+    width: 36,
+    height: 36,
+    borderRadius: 8,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   circle: {
     width: 22,
     height: 22,
@@ -111,6 +126,8 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: "#48484A",
     backgroundColor: "transparent",
+    alignItems: "center",
+    justifyContent: "center",
   },
   circleSelected: {
     borderColor: "#0A84FF",

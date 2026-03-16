@@ -13,44 +13,108 @@ import {
   Text,
   View,
 } from "react-native";
-import { Button, Colors } from "./components/Button";
+import { ActionsGroup } from "./components/ActionsGroup";
 import { ProvidersGroup } from "./components/ProvidersGroup";
-import { SyncGroup } from "./components/SyncGroup";
 import { SessionGroup } from "./components/SessionGroup";
+import { StatusBanner } from "./components/StatusBanner";
+import { Toast } from "./components/Toast";
 import { useLogs } from "./hooks/useLogs";
 import { LogsScreen } from "./screens/LogsScreen";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 
 export default function App() {
   const onAuthErrorPayload = useEvent(OpenWearablesHealthSDK, "onAuthError");
-  const [credentials, setCredentials] = useState<Record<string, any>>([]);
+  const [credentials, setCredentials] = useState<Record<string, any>>({});
   const [showLogs, setShowLogs] = useState(false);
   const [isAuthorized, setIsAuthorized] = useState<boolean | null>(null);
+  const [isSyncActive, setIsSyncActive] = useState(false);
+  const [isConnected, setIsConnected] = useState(false);
+  const [toast, setToast] = useState<{ message: string; key: number } | null>(
+    null
+  );
   const { logs, clearLogs } = useLogs();
 
-  const isConnected = Boolean(OpenWearablesHealthSDK.isSessionValid());
-
-  useEffect(() => {
-    refreshStoredCredentials();
-  }, []);
-
-  const requestAuthorization = async () => {
+  const autoRequestAuthorization = async () => {
     const granted = await OpenWearablesHealthSDK.requestAuthorization(
       Object.values(HealthDataType)
     );
     setIsAuthorized(granted);
   };
 
-  const refreshStoredCredentials = () => {
-    const credentials = OpenWearablesHealthSDK.getStoredCredentials();
-    console.log("[OpenWearables] - Credentials: ", credentials);
-    setCredentials(credentials);
-  };
+  useEffect(() => {
+    const init = async () => {
+      const stored = OpenWearablesHealthSDK.getStoredCredentials();
+      setCredentials(stored ?? {});
+
+      if (stored?.host) {
+        OpenWearablesHealthSDK.configure(stored.host);
+      }
+
+      OpenWearablesHealthSDK.restoreSession();
+
+      const valid = Boolean(OpenWearablesHealthSDK.isSessionValid());
+      setIsConnected(valid);
+      if (valid) {
+        setIsSyncActive(Boolean(OpenWearablesHealthSDK.isSyncActive()));
+        await autoRequestAuthorization();
+      }
+    };
+
+    init();
+  }, []);
 
   useEffect(() => {
     if (!onAuthErrorPayload) return;
     Alert.alert(onAuthErrorPayload.message);
   }, [onAuthErrorPayload]);
+
+  const refreshStoredCredentials = () => {
+    const stored = OpenWearablesHealthSDK.getStoredCredentials();
+    setCredentials(stored ?? {});
+  };
+
+  const showToast = (message: string) => {
+    setToast({ message, key: Date.now() });
+  };
+
+  const handleConnectSuccess = () => {
+    const stored = OpenWearablesHealthSDK.getStoredCredentials();
+    setCredentials(stored ?? {});
+    setIsConnected(true);
+    showToast("Connected successfully");
+    if (stored?.provider) {
+      autoRequestAuthorization();
+    }
+  };
+
+  const handleDisconnect = () => {
+    setIsAuthorized(null);
+    setIsSyncActive(false);
+    setIsConnected(false);
+    refreshStoredCredentials();
+  };
+
+  const handleProviderChange = () => {
+    setIsAuthorized(null);
+    setIsSyncActive(false);
+    refreshStoredCredentials();
+    autoRequestAuthorization();
+  };
+
+  const getProviderDisplayName = (): string | null => {
+    if (!credentials.provider) return null;
+    const providers = OpenWearablesHealthSDK.getAvailableProviders();
+    return (
+      providers.find((p) => p.id === credentials.provider)?.displayName ?? null
+    );
+  };
+
+  const syncSubtitle = isConnected
+    ? (() => {
+        const name = getProviderDisplayName();
+        return name ? `Connected via ${name}` : "Connected";
+      })()
+    : "Not connected";
 
   return (
     <SafeAreaProvider>
@@ -74,7 +138,11 @@ export default function App() {
             <Text style={styles.headerTitle}>Open Wearables</Text>
             <Pressable onPress={() => setShowLogs(true)} hitSlop={8}>
               <View style={styles.logsButton}>
-                <Ionicons name="list" size={20} color="#007AFF" />
+                <Ionicons
+                  name="document-text-outline"
+                  size={22}
+                  color="#8E8E93"
+                />
                 {logs.length > 0 && (
                   <View style={styles.badge}>
                     <Text style={styles.badgeText}>
@@ -90,36 +158,34 @@ export default function App() {
             style={styles.scroll}
             keyboardShouldPersistTaps="always"
           >
-            <SessionGroup
-              credentials={credentials}
-              onSignOut={() => setIsAuthorized(null)}
-            />
-            {isConnected && (
+            <StatusBanner isSyncing={isSyncActive} subtitle={syncSubtitle} />
+            {isConnected === false ? (
+              <SessionGroup
+                credentials={credentials}
+                onConnectSuccess={handleConnectSuccess}
+              />
+            ) : (
               <>
                 <ProvidersGroup
                   savedProvider={credentials.provider}
-                  onProviderChange={() => setIsAuthorized(null)}
+                  onProviderChange={handleProviderChange}
                 />
-                {isAuthorized === true ? (
-                  <SyncGroup />
-                ) : (
-                  <>
-                    <Button
-                      title="Authorize Health"
-                      color={Colors.positive}
-                      onPress={requestAuthorization}
-                    />
-                    {isAuthorized === false && (
-                      <View style={styles.accessDenied}>
-                        <Text style={styles.accessDeniedText}>
-                          Access denied. Please grant health permissions to
-                          enable sync.
-                        </Text>
-                      </View>
-                    )}
-                  </>
-                )}
+                <ActionsGroup
+                  isAuthorized={isAuthorized}
+                  isSyncActive={isSyncActive}
+                  onAuthChange={setIsAuthorized}
+                  onSyncChange={setIsSyncActive}
+                  onDisconnect={handleDisconnect}
+                  onToast={showToast}
+                />
               </>
+            )}
+            {toast != null && (
+              <Toast
+                key={toast.key}
+                message={toast.message}
+                onHide={() => setToast(null)}
+              />
             )}
           </ScrollView>
         </KeyboardAvoidingView>
@@ -139,7 +205,6 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     paddingHorizontal: 20,
     paddingVertical: 12,
-    backgroundColor: "#000000",
   },
   headerTitle: {
     fontSize: 28,
@@ -173,16 +238,5 @@ const styles = StyleSheet.create({
     gap: 16,
     padding: 20,
     paddingTop: 4,
-  },
-  accessDenied: {
-    backgroundColor: "#2D0000",
-    borderRadius: 10,
-    borderLeftWidth: 4,
-    borderLeftColor: "#FF453A",
-    padding: 14,
-  },
-  accessDeniedText: {
-    color: "#FF6B6B",
-    fontSize: 14,
   },
 });

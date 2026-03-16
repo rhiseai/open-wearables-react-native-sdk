@@ -10,6 +10,37 @@ interface ProvidersGroupProps {
   onProviderChange?: () => void;
 }
 
+const PROVIDER_META: Record<
+  string,
+  { iconName: string; iconBgColor: string; description: string }
+> = {
+  samsung: {
+    iconName: "phone-portrait-outline",
+    iconBgColor: "#00B140",
+    description: "Samsung devices with Samsung Health",
+  },
+  google: {
+    iconName: "heart-outline",
+    iconBgColor: "#4A35C8",
+    description: "Universal Android health hub",
+  },
+};
+
+function getProviderMeta(provider: HealthDataProvider) {
+  const byId = PROVIDER_META[provider.id];
+  if (byId) return byId;
+
+  const name = provider.displayName.toLowerCase();
+  if (name.includes("samsung")) return PROVIDER_META.samsung_health;
+  if (name.includes("health connect")) return PROVIDER_META.health_connect;
+
+  return {
+    iconName: "heart-outline",
+    iconBgColor: "#3A3A3C",
+    description: "Unknown provider",
+  };
+}
+
 export function ProvidersGroup({
   savedProvider,
   onProviderChange,
@@ -37,14 +68,23 @@ export function ProvidersGroup({
 
   if (providers.length === 0) return null;
 
-  const options: SelectorOption[] = providers.map((p) => ({
-    id: p.id,
-    title: p.displayName,
-    disabled: !p.isAvailable,
-  }));
+  const options: SelectorOption[] = providers.map((p) => {
+    const meta = getProviderMeta(p);
+    return {
+      id: p.id,
+      title: p.displayName,
+      description: meta.description,
+      disabled: !p.isAvailable,
+      iconName: meta.iconName,
+      iconBgColor: meta.iconBgColor,
+    };
+  });
 
   return (
-    <Group name="Providers">
+    <Group
+      name="Health Provider"
+      description="Select where to read health data from"
+    >
       <OptionSelector
         options={options}
         selectedId={selectedId}

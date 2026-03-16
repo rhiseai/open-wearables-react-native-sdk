@@ -1,52 +1,34 @@
+import { Ionicons } from "@expo/vector-icons";
 import OpenWearablesHealthSDK from "open-wearables";
 import { useEffect, useState } from "react";
-import { Alert } from "react-native";
-import { Button, Colors } from "./Button";
+import {
+  Alert,
+  Pressable,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from "react-native";
 import { Group } from "./Group";
-import { Input } from "./Input";
 
 interface SessionGroupProperties {
   credentials: Record<string, any>;
-  onSignOut?: () => void;
+  onConnectSuccess?: () => void;
 }
 
 export function SessionGroup({
   credentials,
-  onSignOut,
+  onConnectSuccess,
 }: SessionGroupProperties) {
   const [hostInput, setHostInput] = useState("");
   const [invitationCode, setInvitationCode] = useState("");
   const [connecting, setConnecting] = useState(false);
-
-  const isConnected = Boolean(OpenWearablesHealthSDK.isSessionValid());
-
-  useEffect(() => {
-    const restoreHost = async () => {
-      const host = credentials.host;
-      if (host) {
-        OpenWearablesHealthSDK.configure(host);
-      } else {
-        await signOut();
-      }
-    };
-
-    restoreHost();
-  }, []);
 
   useEffect(() => {
     if (credentials.host) {
       setHostInput(credentials.host);
     }
   }, [credentials]);
-
-  const signOut = async () => {
-    try {
-      await OpenWearablesHealthSDK.signOut();
-      onSignOut?.();
-    } catch (e: any) {
-      Alert.alert("Sign out error", e?.message ?? String(e));
-    }
-  };
 
   const connect = async () => {
     setConnecting(true);
@@ -85,6 +67,7 @@ export function SessionGroup({
         refreshToken,
         null
       );
+      onConnectSuccess?.();
     } catch (e: any) {
       Alert.alert("Connect error", e?.message ?? String(e));
     } finally {
@@ -92,35 +75,93 @@ export function SessionGroup({
     }
   };
 
+  const canConnect = !connecting && invitationCode.length > 0;
+
   return (
-    <Group name={`Session — ${isConnected ? "Connected" : "Not connected"}`}>
-      {isConnected ? (
-        <Button title="Sign Out" color={Colors.destructive} onPress={signOut} />
-      ) : (
-        <>
-          <Input
+    <Group name="Connect">
+      <View style={styles.inputsContainer}>
+        <View style={styles.inputRow}>
+          <Ionicons name="globe-outline" size={20} color="#8E8E93" />
+          <TextInput
+            style={styles.input}
             onChangeText={setHostInput}
             value={hostInput}
             placeholder="Host URL"
+            placeholderTextColor="#48484A"
             autoCorrect={false}
             autoCapitalize="none"
-            editable={!isConnected}
           />
-          <Input
+        </View>
+        <View style={styles.separator} />
+        <View style={styles.inputRow}>
+          <Ionicons name="ticket-outline" size={20} color="#8E8E93" />
+          <TextInput
+            style={styles.input}
             onChangeText={setInvitationCode}
             value={invitationCode}
             placeholder="Invitation Code"
+            placeholderTextColor="#48484A"
             autoCorrect={false}
             autoCapitalize="none"
           />
-          <Button
-            title={connecting ? "Connecting…" : "Connect"}
-            color={Colors.primary}
-            disabled={connecting || invitationCode.length === 0}
-            onPress={connect}
-          />
-        </>
-      )}
+        </View>
+      </View>
+      <Pressable
+        onPress={connect}
+        disabled={!canConnect}
+        style={({ pressed }) => [
+          styles.connectButton,
+          !canConnect && styles.connectButtonDisabled,
+          pressed && canConnect && styles.connectButtonPressed,
+        ]}
+      >
+        <Text style={styles.connectButtonText}>
+          {connecting ? "Connecting…" : "Connect"}
+        </Text>
+      </Pressable>
     </Group>
   );
 }
+
+const styles = StyleSheet.create({
+  inputsContainer: {
+    backgroundColor: "#2C2C2E",
+    borderRadius: 10,
+    overflow: "hidden",
+    marginBottom: 10,
+  },
+  inputRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 12,
+    paddingVertical: 13,
+    gap: 10,
+  },
+  separator: {
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: "#38383A",
+    marginLeft: 42,
+  },
+  input: {
+    flex: 1,
+    color: "#FFFFFF",
+    fontSize: 15,
+  },
+  connectButton: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 10,
+    paddingVertical: 14,
+    alignItems: "center",
+  },
+  connectButtonDisabled: {
+    opacity: 0.45,
+  },
+  connectButtonPressed: {
+    opacity: 0.85,
+  },
+  connectButtonText: {
+    color: "#000000",
+    fontSize: 16,
+    fontWeight: "600",
+  },
+});
