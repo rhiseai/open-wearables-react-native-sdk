@@ -88,7 +88,7 @@ git checkout v0.5.0
 ./gradlew publishToMavenLocal
 ```
 
-3. In this example project, add `mavenLocal()` under `allRepositories` (it must be first!) in:
+3. In this example project, add `mavenLocal()` under `allprojects` → `repositories` (it must be first!) in:
 
 ```
 example/android/build.gradle
@@ -105,7 +105,7 @@ allprojects {
 }
 ```
 
-4. Run the Android app:
+Run the Android app (from the /example directory):
 
 ```sh
 npx expo run:android
