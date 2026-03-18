@@ -1,0 +1,20 @@
+{
+  "platforms": [
+    "apple",
+    "android",
+    "web"
+  ],
+  "apple": {
+    "modules": [
+      "OpenWearablesModule"
+    ],
+    "appDelegateSubscribers": [
+      "OpenWearablesAppDelegateSubscriber"
+    ]
+  },
+  "android": {
+    "modules": [
+      "expo.modules.openwearables.OpenWearablesModule"
+    ]
+  }
+}
