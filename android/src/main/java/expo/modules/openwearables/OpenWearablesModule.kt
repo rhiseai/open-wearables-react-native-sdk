@@ -112,7 +112,7 @@ public class OpenWearablesModule : Module() {
       OpenWearablesHealthSDK.getInstance().syncNow()
     }
 
-    AsyncFunction("syncRecentWindow") Coroutine { _: Int? ->
+    AsyncFunction("syncRecentWindow") Coroutine { _: Double? ->
       // iOS-only catch-up sync; no-op on Android.
       return@Coroutine true
     }
