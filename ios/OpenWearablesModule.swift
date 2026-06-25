@@ -94,8 +94,8 @@ public class OpenWearablesModule: Module {
             }
         }
 
-        AsyncFunction("syncRecentWindow") { (daysBack: Int?, promise: Promise) in
-            OpenWearablesHealthSDK.shared.syncRecentWindow(daysBack: daysBack ?? 1) { ok in
+        AsyncFunction("syncRecentWindow") { (sinceMillis: Double, promise: Promise) in
+            OpenWearablesHealthSDK.shared.syncRecentWindow(sinceMillis: sinceMillis) { ok in
                 promise.resolve(ok)
             }
         }
