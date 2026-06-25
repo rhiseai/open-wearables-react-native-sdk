@@ -93,7 +93,13 @@ public class OpenWearablesModule: Module {
                 promise.resolve()
             }
         }
-        
+
+        AsyncFunction("syncRecentWindow") { (daysBack: Int?, promise: Promise) in
+            OpenWearablesHealthSDK.shared.syncRecentWindow(daysBack: daysBack ?? 1) { ok in
+                promise.resolve(ok)
+            }
+        }
+
         AsyncFunction("resumeSync") { (promise: Promise) in
             OpenWearablesHealthSDK.shared.resumeSync { resumed in
                 promise.resolve(resumed)
