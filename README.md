@@ -256,7 +256,7 @@ The following health data type identifiers can be passed to `requestAuthorizatio
 `heartRate`, `restingHeartRate`, `heartRateVariabilitySDNN`, `vo2Max`, `oxygenSaturation`, `respiratoryRate`
 
 **Body Measurements**
-`bodyMass`, `height`, `bmi`, `bodyFatPercentage`, `leanBodyMass`, `waistCircumference`, `bodyTemperature`
+`bodyMass`, `height`, `bmi`, `bodyFatPercentage`, `leanBodyMass`, `waistCircumference`, `bodyTemperature`, `basalBodyTemperature`
 
 **Blood & Metabolic**
 `bloodGlucose`, `insulinDelivery`, `bloodPressureSystolic`, `bloodPressureDiastolic`, `bloodPressure`
@@ -268,7 +268,7 @@ The following health data type identifiers can be passed to `requestAuthorizatio
 `menstrualFlow`, `cervicalMucusQuality`, `ovulationTestResult`, `sexualActivity`
 
 **Nutrition**
-`dietaryEnergyConsumed`, `dietaryCarbohydrates`, `dietaryProtein`, `dietaryFatTotal`, `dietaryWater`
+`dietaryEnergyConsumed`, `dietaryCarbohydrates`, `dietaryProtein`, `dietaryFatTotal`, `dietaryWater`, `dietaryFiber`, `dietarySugar`, `dietaryCaffeine`
 
 **Workout**
 `workout`

@@ -48,6 +48,7 @@ export enum HealthDataType {
   LeanBodyMass = "leanBodyMass",
   WaistCircumference = "waistCircumference",
   BodyTemperature = "bodyTemperature",
+  BasalBodyTemperature = "basalBodyTemperature",
 
   // Blood & Metabolic
   BloodGlucose = "bloodGlucose",
@@ -72,6 +73,9 @@ export enum HealthDataType {
   DietaryProtein = "dietaryProtein",
   DietaryFatTotal = "dietaryFatTotal",
   DietaryWater = "dietaryWater",
+  DietaryFiber = "dietaryFiber",
+  DietarySugar = "dietarySugar",
+  DietaryCaffeine = "dietaryCaffeine",
 
   // Workout
   Workout = "workout",
