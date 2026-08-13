@@ -94,9 +94,12 @@ public class OpenWearablesModule: Module {
             }
         }
 
-        AsyncFunction("syncRecentWindow") { (sinceMillis: Double, promise: Promise) in
-            OpenWearablesHealthSDK.shared.syncRecentWindow(sinceMillis: sinceMillis) { ok in
-                promise.resolve(ok)
+        AsyncFunction("syncRecentWindow") { (sinceMillis: Double, types: [String]?) async -> Bool in
+            let healthTypes = types?.compactMap { HealthDataType(rawValue: $0) }
+            return await withCheckedContinuation { continuation in
+                OpenWearablesHealthSDK.shared.syncRecentWindow(sinceMillis: sinceMillis, types: healthTypes) { ok in
+                    continuation.resume(returning: ok)
+                }
             }
         }
 
