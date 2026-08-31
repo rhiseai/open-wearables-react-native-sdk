@@ -34,7 +34,9 @@ export function ActionRow({
       </View>
       <View style={styles.content}>
         <Text style={[styles.title, { color: titleColor }]}>{title}</Text>
-        {description != null && <Text style={styles.description}>{description}</Text>}
+        {description != null && (
+          <Text style={styles.description}>{description}</Text>
+        )}
       </View>
       <Ionicons name="chevron-forward" size={16} color="#48484A" />
     </Pressable>

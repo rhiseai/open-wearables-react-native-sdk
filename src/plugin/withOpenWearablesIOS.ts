@@ -11,7 +11,7 @@ export interface OpenWearablesIOSPluginProps {
 
 const withOpenWearablesIOS: ConfigPlugin<OpenWearablesIOSPluginProps> = (
   config,
-  options = {}
+  options = {},
 ) => {
   const {
     healthShareUsage = "Allow access to your health data.",

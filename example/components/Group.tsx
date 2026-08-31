@@ -9,8 +9,12 @@ interface GroupProps {
 export function Group({ name, description, children }: GroupProps) {
   return (
     <View style={styles.group}>
-      {name != null && <Text style={styles.groupHeader}>{name.toUpperCase()}</Text>}
-      {description != null && <Text style={styles.groupDescription}>{description}</Text>}
+      {name != null && (
+        <Text style={styles.groupHeader}>{name.toUpperCase()}</Text>
+      )}
+      {description != null && (
+        <Text style={styles.groupDescription}>{description}</Text>
+      )}
       {children}
     </View>
   );

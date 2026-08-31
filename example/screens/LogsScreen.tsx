@@ -1,4 +1,8 @@
 import { Ionicons } from "@expo/vector-icons";
+import OpenWearablesHealthSDK, {
+  OWLogLevel,
+  OWLogLevelLabel,
+} from "open-wearables";
 import { useState } from "react";
 import {
   FlatList,
@@ -10,12 +14,9 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { LogEntry } from "../hooks/useLogs";
-import OpenWearablesHealthSDK, {
-  OWLogLevel,
-  OWLogLevelLabel,
-} from "open-wearables";
+
 import { OptionSelector, SelectorOption } from "../components/OptionSelector";
+import { LogEntry } from "../hooks/useLogs";
 
 interface LogsScreenProps {
   logs: LogEntry[];
@@ -33,7 +34,7 @@ const LOG_LEVEL_OPTIONS: SelectorOption[] = (
 export function LogsScreen({ logs, onClearLogs, onBack }: LogsScreenProps) {
   const [search, setSearch] = useState("");
   const [logLevel, setLogLevel] = useState<OWLogLevel>(() =>
-    OpenWearablesHealthSDK.getLogLevel()
+    OpenWearablesHealthSDK.getLogLevel(),
   );
   const insets = useSafeAreaInsets();
 

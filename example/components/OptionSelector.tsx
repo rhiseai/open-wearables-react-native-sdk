@@ -16,7 +16,11 @@ interface OptionSelectorProps {
   onSelect: (id: string) => void;
 }
 
-export function OptionSelector({ options, selectedId, onSelect }: OptionSelectorProps) {
+export function OptionSelector({
+  options,
+  selectedId,
+  onSelect,
+}: OptionSelectorProps) {
   return (
     <View style={styles.container}>
       {options.map((option, index) => {
@@ -50,11 +54,18 @@ export function OptionSelector({ options, selectedId, onSelect }: OptionSelector
               </View>
             )}
             <View style={styles.content}>
-              <Text style={[styles.title, option.disabled && styles.textDisabled]}>
+              <Text
+                style={[styles.title, option.disabled && styles.textDisabled]}
+              >
                 {option.title}
               </Text>
               {option.description != null && (
-                <Text style={[styles.description, option.disabled && styles.textDisabled]}>
+                <Text
+                  style={[
+                    styles.description,
+                    option.disabled && styles.textDisabled,
+                  ]}
+                >
                   {option.description}
                 </Text>
               )}
