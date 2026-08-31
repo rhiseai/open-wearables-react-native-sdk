@@ -35,11 +35,11 @@ export function useLogs() {
   useEffect(() => {
     if (!onAuthErrorPayload) return;
     console.error(
-      `[OpenWearables] - ${onAuthErrorPayload.statusCode}: ${onAuthErrorPayload.message}`
+      `[OpenWearables] - ${onAuthErrorPayload.statusCode}: ${onAuthErrorPayload.message}`,
     );
     addLog(
       `${onAuthErrorPayload.statusCode}: ${onAuthErrorPayload.message}`,
-      "error"
+      "error",
     );
   }, [onAuthErrorPayload]);
 

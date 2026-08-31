@@ -26,6 +26,7 @@ public class OpenWearablesModule: Module {
         
         // MARK: - Configure        
         Function("configure") { (host: String, customSyncURL: String?) in
+            // The native iOS SDK has no custom sync URL; this platform difference is documented.
             OpenWearablesHealthSDK.shared.configure(host: host)
         }
         
@@ -51,7 +52,7 @@ public class OpenWearablesModule: Module {
             promise.resolve()
         }
         
-        Function("updateTokens") { (accessToken: String, refreshToken: String) in
+        Function("updateTokens") { (accessToken: String, refreshToken: String?) in
             OpenWearablesHealthSDK.shared.updateTokens(
                 accessToken: accessToken,
                 refreshToken: refreshToken
@@ -88,12 +89,6 @@ public class OpenWearablesModule: Module {
             promise.resolve()
         }
         
-        AsyncFunction("syncNow") { (promise: Promise) in
-            OpenWearablesHealthSDK.shared.syncNow {
-                promise.resolve()
-            }
-        }
-
         AsyncFunction("syncRecentWindow") { (sinceMillis: Double, types: [String]?) async -> Bool in
             let healthTypes = types?.compactMap { HealthDataType(rawValue: $0) }
             return await withCheckedContinuation { continuation in
@@ -122,13 +117,26 @@ public class OpenWearablesModule: Module {
         }
         
         Function("getStoredCredentials") {
-            return OpenWearablesHealthSDK.shared.getStoredCredentials()
+            let credentials = OpenWearablesHealthSDK.shared.getStoredCredentials()
+            var normalized = credentials.reduce(into: [String: Any]()) { result, entry in
+                result[entry.key] = entry.value ?? NSNull()
+            }
+            // Keep the same explicit key set on both platforms.
+            normalized["customSyncUrl"] = NSNull()
+            normalized["provider"] = "apple"
+            return normalized
         }
 
-        // MARK: - Providers (not implemented in iOS SDK)        
-        Function("getAvailableProviders") { return [] }
-        
-        Function("setProvider") { }
+        // MARK: - Providers (iOS has exactly one: HealthKit)
+        Function("getAvailableProviders") {
+            return [
+                ["id": "apple", "displayName": "Apple Health", "isAvailable": true]
+            ]
+        }
+
+        Function("setProvider") { (providerId: String) in
+            return providerId == "apple"
+        }
 
         // MARK: - Logs
         Function("setLogLevel") { (levelId: Int) in

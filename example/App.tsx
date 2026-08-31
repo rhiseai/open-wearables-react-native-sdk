@@ -1,6 +1,9 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useEvent } from "expo";
-import OpenWearablesHealthSDK, { HealthDataType } from "open-wearables";
+import OpenWearablesHealthSDK, {
+  HealthDataType,
+  type SyncStatus,
+} from "open-wearables";
 import { useEffect, useState } from "react";
 import {
   Alert,
@@ -13,6 +16,8 @@ import {
   Text,
   View,
 } from "react-native";
+import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
+
 import { ActionsGroup } from "./components/ActionsGroup";
 import { ProvidersGroup } from "./components/ProvidersGroup";
 import { SessionGroup } from "./components/SessionGroup";
@@ -20,7 +25,6 @@ import { StatusBanner } from "./components/StatusBanner";
 import { Toast } from "./components/Toast";
 import { useLogs } from "./hooks/useLogs";
 import { LogsScreen } from "./screens/LogsScreen";
-import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 
 export default function App() {
   const onAuthErrorPayload = useEvent(OpenWearablesHealthSDK, "onAuthError");
@@ -28,15 +32,17 @@ export default function App() {
   const [showLogs, setShowLogs] = useState(false);
   const [isAuthorized, setIsAuthorized] = useState<boolean | null>(null);
   const [isSyncActive, setIsSyncActive] = useState(false);
+  const [syncStatus, setSyncStatus] = useState<SyncStatus | null>(null);
   const [isConnected, setIsConnected] = useState(false);
+  const [isResuming, setIsResuming] = useState(false);
   const [toast, setToast] = useState<{ message: string; key: number } | null>(
-    null
+    null,
   );
   const { logs, clearLogs } = useLogs();
 
   const autoRequestAuthorization = async () => {
     const granted = await OpenWearablesHealthSDK.requestAuthorization(
-      Object.values(HealthDataType)
+      Object.values(HealthDataType),
     );
     setIsAuthorized(granted);
   };
@@ -66,6 +72,33 @@ export default function App() {
     Alert.alert(onAuthErrorPayload.message);
   }, [onAuthErrorPayload]);
 
+  useEffect(() => {
+    if (!isConnected || !isSyncActive) {
+      setSyncStatus(null);
+      return;
+    }
+    const read = () => {
+      setSyncStatus(OpenWearablesHealthSDK.getSyncStatus());
+    };
+    read();
+    const id = setInterval(read, 2000);
+    return () => clearInterval(id);
+  }, [isConnected, isSyncActive]);
+
+  const handleResumeSync = async () => {
+    setIsResuming(true);
+    try {
+      // Deliberately not branching on the resolved value: it reports true even when the
+      // native call was a no-op. The isSyncing poll is the source of truth.
+      await OpenWearablesHealthSDK.resumeSync();
+    } catch (e: any) {
+      Alert.alert("Resume failed", e?.message ?? String(e));
+    } finally {
+      setIsResuming(false);
+      setSyncStatus(OpenWearablesHealthSDK.getSyncStatus());
+    }
+  };
+
   const refreshStoredCredentials = () => {
     const stored = OpenWearablesHealthSDK.getStoredCredentials();
     setCredentials(stored ?? {});
@@ -80,8 +113,7 @@ export default function App() {
     setCredentials(stored ?? {});
     setIsConnected(true);
     showToast("Connected successfully");
-    // iOS only has 1 provider (HealthKit)
-    if (Platform.OS === "ios" || stored?.provider) {
+    if (stored?.provider) {
       autoRequestAuthorization();
     }
   };
@@ -157,7 +189,13 @@ export default function App() {
             style={styles.scroll}
             keyboardShouldPersistTaps="always"
           >
-            <StatusBanner isSyncing={isSyncActive} subtitle={syncSubtitle} />
+            <StatusBanner
+              isSyncActive={isSyncActive}
+              status={syncStatus}
+              subtitle={syncSubtitle}
+              onResume={handleResumeSync}
+              isResuming={isResuming}
+            />
             {isConnected === false ? (
               <SessionGroup
                 credentials={credentials}

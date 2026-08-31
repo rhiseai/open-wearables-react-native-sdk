@@ -15,8 +15,8 @@ const withOpenWearablesAndroid: ConfigPlugin = (config) => {
 
     const existingAliases = new Set(
       (application["activity-alias"] ?? []).map(
-        (alias) => alias?.$?.["android:name"]
-      )
+        (alias) => alias?.$?.["android:name"],
+      ),
     );
 
     const aliasesToAdd = [];
@@ -91,11 +91,11 @@ const getMainActivityName = (activities: ManifestActivity[]): string => {
       const categories = filter.category ?? [];
 
       const hasMainAction = actions.some(
-        (a) => a?.$?.["android:name"] === "android.intent.action.MAIN"
+        (a) => a?.$?.["android:name"] === "android.intent.action.MAIN",
       );
 
       const hasLauncherCategory = categories.some(
-        (c) => c?.$?.["android:name"] === "android.intent.category.LAUNCHER"
+        (c) => c?.$?.["android:name"] === "android.intent.category.LAUNCHER",
       );
 
       if (hasMainAction && hasLauncherCategory) {

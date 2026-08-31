@@ -9,6 +9,7 @@ import {
   TextInput,
   View,
 } from "react-native";
+
 import { Group } from "./Group";
 
 interface SessionGroupProperties {
@@ -41,7 +42,7 @@ export function SessionGroup({
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ code: invitationCode }),
-        }
+        },
       );
 
       if (!response.ok) {
@@ -65,7 +66,7 @@ export function SessionGroup({
         userId,
         bearerToken,
         refreshToken,
-        null
+        null,
       );
       onConnectSuccess?.();
     } catch (e: any) {

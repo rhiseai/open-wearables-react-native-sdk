@@ -14,11 +14,11 @@ Pod::Spec.new do |s|
     :ios => '15.1',
   }
   s.swift_version  = '5.9'
-  s.source         = { git: 'https://github.com/the-momentum/open-wearables-react-native-sdk' }
+  s.source         = { git: 'https://github.com/rhiseai/open-wearables-react-native-sdk' }
   s.static_framework = true
 
   s.dependency 'ExpoModulesCore'
-  s.dependency 'OpenWearablesHealthSDK', '0.13.0.1'
+  s.dependency 'OpenWearablesHealthSDK', '0.14.0'
 
   # Swift/Objective-C compatibility
   s.pod_target_xcconfig = {
