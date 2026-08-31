@@ -290,6 +290,8 @@ Returns the current sync status. Synchronous — no `await` needed.
 | `queuedChunks` | `number \| undefined` | Chunks currently persisted in the upload outbox (iOS native SDK). |
 | `queuedRecords` | `number \| undefined` | Serialized payload entries currently persisted in the outbox (iOS native SDK). |
 | `queuedBytes` | `number \| undefined` | Encoded JSON bytes currently persisted in the outbox (iOS native SDK). |
+| `hasPermanentFailure` | `boolean \| undefined` | Whether iOS stopped after a non-retryable upload response. |
+| `permanentFailureStatusCode` | `number \| null \| undefined` | Terminal iOS HTTP status, `null` when no permanent failure exists. |
 
 While `initialExportDone === false`, the historical backfill has not finished — prompt the user
 to keep the app open so the export can complete.
@@ -297,6 +299,11 @@ to keep the app open so the export can complete.
 The upload and outbox counters are optional because Android SDK `0.11.2` does not expose equivalent
 diagnostics. `sentCount` remains the cross-platform health-sample progress counter; on iOS,
 `uploadedRecords` counts serialized payload entries instead and can therefore differ.
+
+When `hasPermanentFailure` is `true`, the iOS SDK received a terminal 4xx response, removed that
+outbox item, and stopped without advancing sync progress. Automatic resume stays blocked until the
+native sync state is explicitly cleared or reset; surface the status instead of offering a normal
+retry loop.
 
 #### `resetAnchors(): void`
 
