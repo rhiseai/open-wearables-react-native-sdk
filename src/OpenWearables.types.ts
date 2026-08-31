@@ -127,4 +127,8 @@ export type SyncStatus = {
   queuedRecords?: number;
   /** Encoded JSON bytes currently persisted in the native iOS outbox. */
   queuedBytes?: number;
+  /** True when the native iOS SDK stopped after a non-retryable upload response. */
+  hasPermanentFailure?: boolean;
+  /** Terminal HTTP status on iOS, null when no permanent failure exists. */
+  permanentFailureStatusCode?: number | null;
 };
