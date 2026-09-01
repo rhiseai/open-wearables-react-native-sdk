@@ -1,5 +1,4 @@
 import ExpoModulesCore
-import OpenWearablesHealthSDK
 import UIKit
 
 public class OpenWearablesAppDelegateSubscriber: ExpoAppDelegateSubscriber {
