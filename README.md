@@ -12,15 +12,16 @@ It is a wrapper for the native iOS and Android SDKs to allow React Native apps t
 | iOS      | Implemented (bundled Rhise native SDK, requires iOS 15.1+)                    |
 | Android  | Implemented (via Maven Local dependency `com.openwearables.health:sdk:0.11.2`) |
 
-## Migration to 0.2.0
+## Migration from 0.2.0–0.2.2
 
-`syncNow()` has been removed from the JS API, following its removal from the native iOS (`0.14.0`)
-and Android (`0.11.2`) SDKs. **There is no replacement.** The native SDKs now resume sync
-automatically when the app returns to the foreground, so a manual trigger is no longer needed —
-delete any `await OpenWearablesHealthSDK.syncNow()` calls.
+`syncNow()` is available again. Versions 0.2.0–0.2.2 removed it because the native foreground
+observer was assumed to start a fresh sync, but it only resumed interrupted sessions. Call
+`await OpenWearablesHealthSDK.syncNow()` when the app enters the foreground to fetch new Apple
+Health changes immediately. The iOS implementation uses persisted anchors; it resumes an
+unfinished initial export without downgrading it and remains single-flight.
 
-`resumeSync()` is *not* a drop-in replacement: it only does anything when a resumable sync session
-exists, and is unrelated to triggering a fresh sync round.
+`resumeSync()` remains separate: it only does anything when a resumable sync session exists and is
+unrelated to triggering a fresh incremental round.
 
 `getSyncStatus()` is now typed as [`SyncStatus`](#getsyncstatus-syncstatus) instead of
 `Record<string, any>`, and gained two fields: `initialExportDone` and `isSyncing`.
@@ -167,6 +168,9 @@ await OpenWearablesHealthSDK.requestAuthorization([
 
 // Start background sync
 await OpenWearablesHealthSDK.startBackgroundSync();
+
+// Fetch Apple Health changes immediately when the app enters the foreground
+await OpenWearablesHealthSDK.syncNow();
 ```
 
 ## API
@@ -245,6 +249,13 @@ configured or no user is signed in. It resolves `false` rather than rejecting on
 #### `stopBackgroundSync(): void`
 
 Stops background sync.
+
+#### `syncNow(): Promise<void>`
+
+Triggers a fresh anchor-based incremental sync on iOS. If the initial historical export is still
+pending, it safely resumes in full-export mode; concurrent triggers are coalesced by the native
+single-flight guard. On Android this resolves without starting extra work because the Android SDK
+already receives the foreground lifecycle through `onForeground()`.
 
 #### `syncRecentWindow(sinceMillis: number, types?: HealthDataType[]): Promise<boolean>`
 

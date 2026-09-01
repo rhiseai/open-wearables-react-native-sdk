@@ -115,6 +115,11 @@ public class OpenWearablesModule : Module() {
       OpenWearablesHealthSDK.getInstance().stopBackgroundSync()
     }
 
+    AsyncFunction("syncNow") Coroutine { _: Unit? ->
+      // The Android SDK already receives the Expo foreground lifecycle through
+      // onForeground(); this explicit anchor-based trigger is currently iOS-only.
+    }
+
     AsyncFunction("syncRecentWindow") Coroutine { _: Double?, _: List<String>? ->
       // iOS-only catch-up sync; no-op on Android.
       return@Coroutine true

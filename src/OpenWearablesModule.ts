@@ -32,6 +32,7 @@ declare class OpenWearablesModule extends NativeModule<OpenWearablesModuleEvents
   setSyncInterval(minutes: number): void;
   startBackgroundSync(syncDaysBack: number | null): Promise<boolean>;
   stopBackgroundSync(): Promise<void>;
+  syncNow(): Promise<void>;
   syncRecentWindow(
     sinceMillis: number,
     types?: HealthDataType[],
