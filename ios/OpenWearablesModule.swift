@@ -87,6 +87,12 @@ public class OpenWearablesModule: Module {
             OpenWearablesHealthSDK.shared.stopBackgroundSync()
             promise.resolve()
         }
+
+        AsyncFunction("syncNow") { (promise: Promise) in
+            OpenWearablesHealthSDK.shared.syncNow {
+                promise.resolve()
+            }
+        }
         
         AsyncFunction("syncRecentWindow") { (sinceMillis: Double, types: [String]?) async -> Bool in
             let healthTypes = types?.compactMap { HealthDataType(rawValue: $0) }
