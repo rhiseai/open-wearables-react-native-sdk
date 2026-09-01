@@ -18,7 +18,13 @@ Pod::Spec.new do |s|
   s.static_framework = true
 
   s.dependency 'ExpoModulesCore'
-  s.dependency 'OpenWearablesHealthSDK', '0.14.0'
+  s.frameworks = 'HealthKit', 'BackgroundTasks', 'UIKit'
+
+  # The reviewed Rhise iOS SDK is vendored into this pod so consumers only
+  # install the RN package. Its exact source revision is recorded under
+  # ios/Vendor/OpenWearablesHealthSDK/REVISION.
+  s.preserve_paths = 'Vendor/OpenWearablesHealthSDK/LICENSE',
+                     'Vendor/OpenWearablesHealthSDK/REVISION'
 
   # Swift/Objective-C compatibility
   s.pod_target_xcconfig = {

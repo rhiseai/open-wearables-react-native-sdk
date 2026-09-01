@@ -1,5 +1,4 @@
 import ExpoModulesCore
-import OpenWearablesHealthSDK
 
 public class OpenWearablesModule: Module {
     public func definition() -> ModuleDefinition {

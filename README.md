@@ -9,7 +9,7 @@ It is a wrapper for the native iOS and Android SDKs to allow React Native apps t
 
 | Platform | Status                                                                        |
 | -------- | ----------------------------------------------------------------------------- |
-| iOS      | Implemented (via `OpenWearablesHealthSDK` CocoaPod, requires iOS 15.1+)       |
+| iOS      | Implemented (bundled Rhise native SDK, requires iOS 15.1+)                    |
 | Android  | Implemented (via Maven Local dependency `com.openwearables.health:sdk:0.11.2`) |
 
 ## Migration to 0.2.0
@@ -64,6 +64,8 @@ Then, depending if you are using Expo or React Native CLI, follow the instructio
 ### Expo
 
 Expo projects using the Expo Modules API automatically link native dependencies.
+The reviewed Rhise iOS SDK is included in this package, so applications must not add a separate
+`OpenWearablesHealthSDK` CocoaPod or Expo Podfile override.
 
 After installing the package, simply run your project.
 
@@ -94,6 +96,9 @@ or manually:
 ```sh
 cd ios && pod install
 ```
+
+The RN pod compiles the vendored native iOS sources directly; no additional native SDK dependency
+or CocoaPods source is required.
 
 ### Android (temporary setup)
 
