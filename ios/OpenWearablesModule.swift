@@ -73,6 +73,31 @@ public class OpenWearablesModule: Module {
                 promise.resolve(success)
             }
         }
+
+        Function("isHealthDataAvailable") {
+            return OpenWearablesHealthProbe.isHealthDataAvailable
+        }
+
+        AsyncFunction("getHealthAuthorizationRequestStatus") { (types: [String], promise: Promise) in
+            OpenWearablesHealthProbe.requestStatus(rawTypes: types) { status in
+                promise.resolve(status.rawValue)
+            }
+        }
+
+        AsyncFunction("probeReadableSamples") { (
+            types: [String],
+            sinceMillis: Double,
+            limit: Int?,
+            promise: Promise
+        ) in
+            OpenWearablesHealthProbe.probeReadableSamples(
+                rawTypes: types,
+                sinceMillis: sinceMillis,
+                limit: limit
+            ) { counts in
+                promise.resolve(counts)
+            }
+        }
         
         // MARK: - Sync    
         Function("setSyncInterval") { (minutes: Double) in } // (not implemented in iOS SDK)

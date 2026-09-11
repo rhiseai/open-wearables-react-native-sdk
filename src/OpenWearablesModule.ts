@@ -1,10 +1,12 @@
 import { NativeModule, requireNativeModule } from "expo-modules-core";
 
 import {
+  HealthAuthorizationRequestStatus,
   HealthDataType,
   OpenWearablesModuleEvents,
   HealthDataProvider,
   OWLogLevel,
+  ReadableSampleCounts,
   StoredCredentials,
   SyncStatus,
 } from "./OpenWearables.types";
@@ -27,6 +29,15 @@ declare class OpenWearablesModule extends NativeModule<OpenWearablesModuleEvents
 
   // MARK: - HealthKit Authorization
   requestAuthorization(types: HealthDataType[]): Promise<boolean>;
+  isHealthDataAvailable(): boolean;
+  getHealthAuthorizationRequestStatus(
+    types: HealthDataType[],
+  ): Promise<HealthAuthorizationRequestStatus>;
+  probeReadableSamples(
+    types: HealthDataType[],
+    sinceMillis: number,
+    limit?: number,
+  ): Promise<ReadableSampleCounts>;
 
   // MARK: - Sync
   setSyncInterval(minutes: number): void;

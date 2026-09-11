@@ -41,6 +41,9 @@ underlying native SDKs differ:
 | --- | --- | --- |
 | `setSyncInterval(minutes)` | **No-op.** The iOS SDK has no sync-interval API; the system schedules background delivery itself. | Honoured, but floored at 15 minutes by WorkManager. |
 | `configure(host, customSyncURL)` | `customSyncURL` is **ignored** — the iOS SDK's `configure(host:)` accepts no such parameter, and `getStoredCredentials().customSyncUrl` is therefore always `null`. | Both arguments are honoured and reflected in `getStoredCredentials()`. |
+| `getHealthAuthorizationRequestStatus(types)` | Wraps `HKHealthStore.getRequestStatusForAuthorization`. | **Always `"unnecessary"`** — HealthKit introspection has no Health Connect equivalent here. |
+| `probeReadableSamples(types, sinceMillis, limit?)` | One bounded `HKSampleQuery` per type. | **Always `{}`** — iOS-only. |
+| `isHealthDataAvailable()` | `HKHealthStore.isHealthDataAvailable()`. | **Always `false`** — iOS-only. |
 
 `getAvailableProviders()` returns a single `apple` / "Apple Health" entry on iOS, and the installed
 provider(s) (`google`, `samsung`) on Android. Accordingly `setProvider("apple")` resolves `true` on
@@ -169,6 +172,19 @@ await OpenWearablesHealthSDK.requestAuthorization([
 // Start background sync
 await OpenWearablesHealthSDK.startBackgroundSync();
 
+// The resolved value above is only "the sheet was dismissed", so check what the
+// user actually did: was the sheet answered, and can we read anything at all?
+const status = await OpenWearablesHealthSDK.getHealthAuthorizationRequestStatus([
+  "steps",
+  "heartRate",
+  "sleep",
+]);
+const counts = await OpenWearablesHealthSDK.probeReadableSamples(
+  ["steps", "heartRate", "sleep"],
+  Date.now() - 7 * 24 * 60 * 60 * 1000,
+);
+const canReadSomething = Object.values(counts).some((count) => count > 0);
+
 // Fetch Apple Health changes immediately when the app enters the foreground
 await OpenWearablesHealthSDK.syncNow();
 ```
@@ -215,6 +231,68 @@ Returns whether the current session is valid.
 Requests HealthKit read permissions for the given data types. Returns `true` if the authorization was granted.
 
 See `[HealthDataType](#healthdatatype)` for the full list of supported types.
+
+> **`true` does not mean "granted".** HealthKit calls back with success whenever the sheet is
+> dismissed, including when the user denied every type, and read permissions are deliberately
+> invisible to apps. Use
+> [`getHealthAuthorizationRequestStatus`](#gethealthauthorizationrequeststatustypes-healthdatatype-promisehealthauthorizationrequeststatus)
+> and [`probeReadableSamples`](#probereadablesamplestypes-healthdatatype-sincemillis-number-limit-number-promisereadablesamplecounts)
+> to find out what actually happened.
+
+#### `getHealthAuthorizationRequestStatus(types: HealthDataType[]): Promise<HealthAuthorizationRequestStatus>`
+
+Asks HealthKit whether the authorization sheet still needs to be shown for the given types.
+
+| Value | Meaning |
+| --- | --- |
+| `"shouldRequest"` | At least one of the given types has never been presented to the user. Calling `requestAuthorization` will show the sheet. |
+| `"unnecessary"` | Every given type was already presented. **This only means the user answered the sheet — not that access was granted.** |
+| `"unknown"` | HealthKit could not determine the status, or none of the given types map to a HealthKit type. |
+
+Types that are unavailable on the running OS version (e.g. `waistCircumference` below iOS 16) are
+skipped, and `bloodPressure` is excluded because the native SDK never requests the HealthKit blood
+pressure correlation — request its `bloodPressureSystolic` / `bloodPressureDiastolic` components
+instead.
+
+On iOS this wraps `HKHealthStore.getRequestStatusForAuthorization(toShare: [], read:)` and resolves
+`"unknown"` when `HKHealthStore.isHealthDataAvailable()` is `false` (iPad, Mac Catalyst). On Android
+it resolves `"unnecessary"`: the Android SDK owns its own permission flow inside
+`requestAuthorization`, so shared code can call this without a platform branch.
+
+#### `probeReadableSamples(types: HealthDataType[], sinceMillis: number, limit?: number): Promise<ReadableSampleCounts>`
+
+Runs one bounded `HKSampleQuery` per type for samples whose start date is at or after the Unix epoch
+timestamp in `sinceMillis`, and resolves how many samples each type returned, keyed by the
+`HealthDataType` raw value:
+
+```ts
+const counts = await OpenWearablesHealthSDK.probeReadableSamples(
+  ["steps", "heartRate", "sleep"],
+  Date.now() - 7 * 24 * 60 * 60 * 1000,
+);
+// { steps: 1, heartRate: 1, sleep: 0 }
+
+const grantedSomething = Object.values(counts).some((count) => count > 0);
+```
+
+`limit` caps the samples read per type; it defaults to `1` (enough to answer "is anything readable")
+and is clamped to `100`. Queries run concurrently and the promise resolves on the main queue once
+all of them finish.
+
+> **A `0` means denied *or* no data on the device.** HealthKit reports a read denial as an empty
+> result, so zero counts for a type that the user simply never recorded are indistinguishable from a
+> refusal. Treat "every count is zero" as "we cannot read anything", and a single non-zero count as
+> proof that at least part of the request was granted.
+
+A type that fails (denied, unsupported on this OS version, or a query error) is logged and counted
+as `0`; one failing type never rejects the promise. Every requested type is present in the result,
+so keys are never missing. If health data is unavailable the promise resolves with all zeros; on
+Android it resolves `{}`.
+
+#### `isHealthDataAvailable(): boolean`
+
+Returns `HKHealthStore.isHealthDataAvailable()` on iOS — `false` on devices without HealthKit, where
+the two calls above cannot produce a meaningful answer. Synchronous. Always `false` on Android.
 
 ---
 

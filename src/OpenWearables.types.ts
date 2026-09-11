@@ -85,6 +85,26 @@ export enum HealthDataType {
   BloodOxygen = "bloodOxygen",
 }
 
+/**
+ * Whether HealthKit still needs to present the authorization sheet.
+ *
+ * - `"shouldRequest"`: at least one requested type has never been presented.
+ * - `"unnecessary"`: every requested type was already presented. This means the
+ *   user *answered* the sheet — it does **not** mean access was granted.
+ * - `"unknown"`: HealthKit could not determine the status, or health data is
+ *   unavailable on this device.
+ */
+export type HealthAuthorizationRequestStatus =
+  | "unknown"
+  | "shouldRequest"
+  | "unnecessary";
+
+/**
+ * Number of samples each probed type returned, keyed by `HealthDataType` raw
+ * value. A `0` means the type is denied **or** has no data on the device.
+ */
+export type ReadableSampleCounts = Record<string, number>;
+
 export type HealthDataProvider = {
   id: string;
   displayName: string;
