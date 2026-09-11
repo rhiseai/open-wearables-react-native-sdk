@@ -95,6 +95,23 @@ public class OpenWearablesModule : Module() {
       return@Coroutine OpenWearablesHealthSDK.getInstance().requestAuthorization(types)
     }
 
+    Function("isHealthDataAvailable") {
+      // HealthKit is iOS-only; Android permission state comes from Health Connect.
+      false
+    }
+
+    AsyncFunction("getHealthAuthorizationRequestStatus") Coroutine { _: List<String> ->
+      // iOS-only HealthKit introspection. "unnecessary" keeps shared application
+      // code from treating Android as "still needs the sheet" — the Android SDK
+      // owns its own permission flow inside requestAuthorization().
+      return@Coroutine "unnecessary"
+    }
+
+    AsyncFunction("probeReadableSamples") Coroutine { _: List<String>, _: Double, _: Int? ->
+      // iOS-only readable-sample probe; returns no counts on Android.
+      return@Coroutine emptyMap<String, Int>()
+    }
+
     // MARK: - Sync
     Function("setSyncInterval") { minutes: Long ->
       OpenWearablesHealthSDK.getInstance().setSyncInterval(minutes)
