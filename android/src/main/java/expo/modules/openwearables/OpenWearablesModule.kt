@@ -165,6 +165,12 @@ public class OpenWearablesModule : Module() {
       OpenWearablesHealthSDK.getInstance().resetAnchors()
     }
 
+    Function("clearPermanentSyncFailure") {
+      // iOS-only: the Android SDK never pauses sync on a terminal upload
+      // response, so there is never a pause to clear.
+      false
+    }
+
     Function("getStoredCredentials") {
       OpenWearablesHealthSDK.getInstance().getStoredCredentials()
     }

@@ -16,9 +16,16 @@ extension OpenWearablesHealthSDK {
         case retryableFailure
     }
 
+    /// 4xx codes that say "not now" rather than "never": a request timeout, a
+    /// too-early retry and a rate limit all succeed unchanged once the server is
+    /// ready for them. Treating them as permanent drops the chunk *and* pauses
+    /// sync indefinitely, which is the wrong answer to a throttled upload.
+    private static let retryableClientErrorStatusCodes: Set<Int> = [408, 425, 429]
+
     internal func classifyUploadResponse(statusCode: Int) -> HTTPUploadResponseDisposition {
         if (200...299).contains(statusCode) { return .delivered }
         if statusCode == 401 { return .refreshAuthentication }
+        if Self.retryableClientErrorStatusCodes.contains(statusCode) { return .retryableFailure }
         if (400...499).contains(statusCode) { return .permanentlyRejected }
         return .retryableFailure
     }

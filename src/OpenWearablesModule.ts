@@ -52,6 +52,7 @@ declare class OpenWearablesModule extends NativeModule<OpenWearablesModuleEvents
   getSyncStatus(): SyncStatus;
   resumeSync(): Promise<boolean>;
   resetAnchors(): void;
+  clearPermanentSyncFailure(): boolean;
   getStoredCredentials(): StoredCredentials;
 
   // MARK: - Providers

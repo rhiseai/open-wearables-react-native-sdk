@@ -44,6 +44,7 @@ underlying native SDKs differ:
 | `getHealthAuthorizationRequestStatus(types)` | Wraps `HKHealthStore.getRequestStatusForAuthorization`. | **Always `"unnecessary"`** — HealthKit introspection has no Health Connect equivalent here. |
 | `probeReadableSamples(types, sinceMillis, limit?)` | One bounded `HKSampleQuery` per type. | **Always `{}`** — iOS-only. |
 | `isHealthDataAvailable()` | `HKHealthStore.isHealthDataAvailable()`. | **Always `false`** — iOS-only. |
+| `clearPermanentSyncFailure()` | Drops a sync session paused by a terminal upload response. | **Always `false`** — the Android SDK never pauses sync this way. |
 
 `getAvailableProviders()` returns a single `apple` / "Apple Health" entry on iOS, and the installed
 provider(s) (`google`, `samsung`) on Android. Accordingly `setProvider("apple")` resolves `true` on
@@ -397,7 +398,11 @@ diagnostics. `sentCount` remains the cross-platform health-sample progress count
 When `hasPermanentFailure` is `true`, the iOS SDK received a terminal 4xx response, removed that
 outbox item, and stopped without advancing sync progress. Automatic resume stays blocked until the
 native sync state is explicitly cleared or reset; surface the status instead of offering a normal
-retry loop.
+retry loop, and use [`clearPermanentSyncFailure()`](#clearpermanentsyncfailure-boolean) to lift the
+pause once the cause is believed to be gone.
+
+`408`, `425` and `429` are **not** terminal: a request timeout, a too-early retry and a rate limit
+are retried through the outbox and never set `hasPermanentFailure`.
 
 #### `resetAnchors(): void`
 
@@ -414,6 +419,22 @@ Two things to know before calling it:
 
 See the note under [`startBackgroundSync`](#startbackgroundsyncsyncdaysback-number-promiseboolean)
 for when a reset is required.
+
+#### `clearPermanentSyncFailure(): boolean`
+
+Lifts a sync pause caused by a terminal upload response, so the next
+[`syncNow()`](#syncnow-promisevoid) runs again. Returns `true` when a pause existed and was cleared,
+`false` when there was nothing to clear. Synchronous — no `await` needed. Always `false` on Android,
+whose SDK never pauses sync this way.
+
+This is a Rhise iOS extension, and it is deliberately narrower than
+[`resetAnchors()`](#resetanchors-void): only the paused sync session is dropped. Query anchors, the
+initial-export flag, the upload outbox and the stored credentials all survive, so sync resumes
+**incrementally** rather than re-exporting the whole history.
+
+Call it when [`getSyncStatus().hasPermanentFailure`](#getsyncstatus-syncstatus) is `true` and the
+rejection is believed to be resolved — repaired credentials, a fixed payload contract. Throttle it:
+clearing a pause whose cause is still present just earns the same rejection on the next round.
 
 #### `getStoredCredentials(): StoredCredentials`
 

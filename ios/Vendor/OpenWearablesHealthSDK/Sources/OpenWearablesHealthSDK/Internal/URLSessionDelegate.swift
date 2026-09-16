@@ -85,14 +85,17 @@ extension OpenWearablesHealthSDK {
             return
         }
 
-        if (400...499).contains(statusCode) {
+        // 2xx and 401 are handled above; everything else goes through the shared
+        // classifier so this path cannot disagree with the foreground one about
+        // which 4xx codes are terminal.
+        if case .permanentlyRejected = classifyUploadResponse(statusCode: statusCode) {
             NSLog("[OpenWearablesHealthSDK] background upload rejected (HTTP \(statusCode)) - dropping item")
             removeOutboxFiles(itemPath: itemPath, payloadPath: payloadPath, anchorPath: anchorPath)
             recordPermanentSyncFailure(statusCode: statusCode)
             return
         }
 
-        // 5xx / no response: keep the files for a later retry pass.
+        // 408 / 425 / 429, 5xx and no response: keep the files for a later retry pass.
         NSLog("[OpenWearablesHealthSDK] background upload failed (HTTP \(statusCode)) - will retry later")
     }
 

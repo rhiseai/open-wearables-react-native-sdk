@@ -141,6 +141,25 @@ extension OpenWearablesHealthSDK {
         logMessage("Sync paused after permanent HTTP \(statusCode); clear or reset the sync session before retrying")
     }
 
+    /// Lift a sync pause left behind by a permanently rejected upload.
+    ///
+    /// Only the sync state file goes: anchors live in `defaults` and the
+    /// initial-export flag in `fullDoneKey()`, so the next round resumes as an
+    /// incremental anchored sync instead of re-exporting the whole history.
+    /// Outbox items and credentials are untouched.
+    ///
+    /// - Returns: `true` when a pause existed and was cleared, `false` when
+    ///   there was nothing to clear.
+    @discardableResult
+    public func clearPermanentSyncFailure() -> Bool {
+        guard let state = loadSyncState(), let statusCode = state.permanentFailureStatusCode else {
+            return false
+        }
+        try? FileManager.default.removeItem(at: syncStateFilePath())
+        logMessage("Cleared sync pause from permanent HTTP \(statusCode) - next sync resumes incrementally")
+        return true
+    }
+
     public func clearSyncSession() {
         try? FileManager.default.removeItem(at: syncStateFilePath())
         try? FileManager.default.removeItem(at: anchorsFilePath())
