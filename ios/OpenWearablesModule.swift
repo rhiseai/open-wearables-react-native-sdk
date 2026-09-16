@@ -145,6 +145,10 @@ public class OpenWearablesModule: Module {
         Function("resetAnchors") {
             OpenWearablesHealthSDK.shared.resetAnchors()
         }
+
+        Function("clearPermanentSyncFailure") {
+            return OpenWearablesHealthSDK.shared.clearPermanentSyncFailure()
+        }
         
         Function("getStoredCredentials") {
             let credentials = OpenWearablesHealthSDK.shared.getStoredCredentials()
