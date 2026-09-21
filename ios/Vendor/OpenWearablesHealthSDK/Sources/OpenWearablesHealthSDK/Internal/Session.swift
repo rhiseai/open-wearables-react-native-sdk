@@ -152,10 +152,27 @@ extension OpenWearablesHealthSDK {
     ///   there was nothing to clear.
     @discardableResult
     public func clearPermanentSyncFailure() -> Bool {
-        guard let state = loadSyncState(), let statusCode = state.permanentFailureStatusCode else {
+        guard let statusCode = loadSyncState()?.permanentFailureStatusCode else {
             return false
         }
-        try? FileManager.default.removeItem(at: syncStateFilePath())
+
+        let stateFile = syncStateFilePath()
+        do {
+            try FileManager.default.removeItem(at: stateFile)
+        } catch {
+            logMessage("Failed to clear sync pause from permanent HTTP \(statusCode): \(error.localizedDescription)")
+            return false
+        }
+
+        // Do not report success unless the durable state agrees. Callers use
+        // this result to start a multi-hour retry throttle, so a swallowed
+        // filesystem error would otherwise leave HealthKit paused across
+        // subsequent app launches.
+        if let remainingStatusCode = loadSyncState()?.permanentFailureStatusCode {
+            logMessage("Sync pause clear did not persist; permanent HTTP \(remainingStatusCode) remains")
+            return false
+        }
+
         logMessage("Cleared sync pause from permanent HTTP \(statusCode) - next sync resumes incrementally")
         return true
     }
