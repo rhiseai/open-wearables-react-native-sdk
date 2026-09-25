@@ -5,10 +5,14 @@ import {
   HealthDataType,
   OpenWearablesModuleEvents,
   HealthDataProvider,
+  HealthWorkoutSummary,
   OWLogLevel,
   ReadableSampleCounts,
+  SaveWorkoutInput,
+  SaveWorkoutResult,
   StoredCredentials,
   SyncStatus,
+  WorkoutWriteStatus,
 } from "./OpenWearables.types";
 
 declare class OpenWearablesModule extends NativeModule<OpenWearablesModuleEvents> {
@@ -38,6 +42,15 @@ declare class OpenWearablesModule extends NativeModule<OpenWearablesModuleEvents
     sinceMillis: number,
     limit?: number,
   ): Promise<ReadableSampleCounts>;
+
+  // MARK: - Workout writing (iOS only)
+  getWorkoutWriteStatus(): WorkoutWriteStatus;
+  requestWorkoutWriteAuthorization(): Promise<WorkoutWriteStatus>;
+  findOverlappingWorkouts(
+    startMillis: number,
+    endMillis: number,
+  ): Promise<HealthWorkoutSummary[]>;
+  saveWorkout(input: SaveWorkoutInput): Promise<SaveWorkoutResult>;
 
   // MARK: - Sync
   setSyncInterval(minutes: number): void;

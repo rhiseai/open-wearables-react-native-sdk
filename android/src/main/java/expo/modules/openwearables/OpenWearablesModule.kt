@@ -112,6 +112,24 @@ public class OpenWearablesModule : Module() {
       return@Coroutine emptyMap<String, Int>()
     }
 
+    // MARK: - Workout writing (iOS only)
+    Function("getWorkoutWriteStatus") {
+      // Writing workouts is HealthKit-only for now.
+      "unavailable"
+    }
+
+    AsyncFunction("requestWorkoutWriteAuthorization") Coroutine { _: Unit? ->
+      return@Coroutine "unavailable"
+    }
+
+    AsyncFunction("findOverlappingWorkouts") Coroutine { _: Double, _: Double ->
+      return@Coroutine emptyList<Map<String, Any?>>()
+    }
+
+    AsyncFunction("saveWorkout") Coroutine { _: Map<String, Any?> ->
+      return@Coroutine mapOf("status" to "unavailable")
+    }
+
     // MARK: - Sync
     Function("setSyncInterval") { minutes: Long ->
       OpenWearablesHealthSDK.getInstance().setSyncInterval(minutes)

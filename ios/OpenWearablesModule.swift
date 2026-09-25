@@ -99,6 +99,29 @@ public class OpenWearablesModule: Module {
             }
         }
         
+        // MARK: - Workout writing (iOS only)
+        Function("getWorkoutWriteStatus") {
+            return OpenWearablesWorkoutWriter.writeStatus().rawValue
+        }
+
+        AsyncFunction("requestWorkoutWriteAuthorization") { (promise: Promise) in
+            OpenWearablesWorkoutWriter.requestWriteAuthorization { status in
+                promise.resolve(status.rawValue)
+            }
+        }
+
+        AsyncFunction("findOverlappingWorkouts") { (startMillis: Double, endMillis: Double, promise: Promise) in
+            OpenWearablesWorkoutWriter.findOverlappingWorkouts(startMillis: startMillis, endMillis: endMillis) { workouts in
+                promise.resolve(workouts)
+            }
+        }
+
+        AsyncFunction("saveWorkout") { (input: WorkoutWriteInput, promise: Promise) in
+            OpenWearablesWorkoutWriter.saveWorkout(input: input) { result in
+                promise.resolve(result)
+            }
+        }
+
         // MARK: - Sync    
         Function("setSyncInterval") { (minutes: Double) in } // (not implemented in iOS SDK)
             
