@@ -44,7 +44,7 @@ declare class OpenWearablesModule extends NativeModule<OpenWearablesModuleEvents
   ): Promise<ReadableSampleCounts>;
 
   // MARK: - Workout writing (iOS only)
-  getWorkoutWriteStatus(): WorkoutWriteStatus;
+  getWorkoutWriteStatus(): Promise<WorkoutWriteStatus>;
   requestWorkoutWriteAuthorization(): Promise<WorkoutWriteStatus>;
   findOverlappingWorkouts(
     startMillis: number,

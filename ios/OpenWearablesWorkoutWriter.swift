@@ -72,17 +72,45 @@ internal enum OpenWearablesWorkoutWriter {
 
     // MARK: - Authorization
 
-    /// The share (write) status of the workout type. Unlike read access, HealthKit
-    /// reports write access truthfully.
-    internal static func writeStatus() -> WriteStatus {
-        guard HKHealthStore.isHealthDataAvailable() else { return .unavailable }
-        switch healthStore.authorizationStatus(for: HKObjectType.workoutType()) {
-        case .sharingAuthorized:
-            return .authorized
-        case .sharingDenied:
-            return .denied
-        default:
-            return .notDetermined
+    private static var shareTypes: Set<HKSampleType> {
+        [HKObjectType.workoutType(), energyType]
+    }
+
+    private static var isWriteAuthorized: Bool {
+        healthStore.authorizationStatus(for: HKObjectType.workoutType()) == .sharingAuthorized
+    }
+
+    /// The write status of the workout type. HealthKit reports write access
+    /// truthfully, but `authorizationStatus(for:)` also answers `sharingDenied`
+    /// for a type that was only ever requested for reading (the sync SDK reads
+    /// workouts), so "never asked to write" comes from the request status instead.
+    internal static func writeStatus(completion: @escaping (WriteStatus) -> Void) {
+        guard HKHealthStore.isHealthDataAvailable() else {
+            DispatchQueue.main.async { completion(.unavailable) }
+            return
+        }
+        if isWriteAuthorized {
+            DispatchQueue.main.async { completion(.authorized) }
+            return
+        }
+        healthStore.getRequestStatusForAuthorization(
+            toShare: shareTypes,
+            read: [HKObjectType.workoutType()]
+        ) { requestStatus, error in
+            if let error = error {
+                log("getWorkoutWriteStatus: \(error.localizedDescription)")
+            }
+            let status: WriteStatus
+            if isWriteAuthorized {
+                status = .authorized
+            } else if requestStatus == .shouldRequest {
+                status = .notDetermined
+            } else if requestStatus == .unnecessary {
+                status = .denied
+            } else {
+                status = .unavailable
+            }
+            DispatchQueue.main.async { completion(status) }
         }
     }
 
@@ -93,16 +121,14 @@ internal enum OpenWearablesWorkoutWriter {
             DispatchQueue.main.async { completion(.unavailable) }
             return
         }
-        let workoutType = HKObjectType.workoutType()
         healthStore.requestAuthorization(
-            toShare: [workoutType, energyType],
-            read: [workoutType]
+            toShare: shareTypes,
+            read: [HKObjectType.workoutType()]
         ) { _, error in
             if let error = error {
                 log("requestWorkoutWriteAuthorization: \(error.localizedDescription)")
             }
-            let status = writeStatus()
-            DispatchQueue.main.async { completion(status) }
+            writeStatus(completion: completion)
         }
     }
 
@@ -164,18 +190,15 @@ internal enum OpenWearablesWorkoutWriter {
             DispatchQueue.main.async { completion(result) }
         }
 
-        switch writeStatus() {
-        case .unavailable:
+        guard HKHealthStore.isHealthDataAvailable() else {
             finish(["status": "unavailable"])
             return
-        case .denied:
-            finish(["status": "denied"])
+        }
+        guard isWriteAuthorized else {
+            writeStatus { status in
+                completion(["status": status == .authorized ? "denied" : status.rawValue])
+            }
             return
-        case .notDetermined:
-            finish(["status": "notDetermined"])
-            return
-        case .authorized:
-            break
         }
 
         guard let activityType = activityTypes[input.activityType] else {

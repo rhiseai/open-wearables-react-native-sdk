@@ -113,9 +113,9 @@ public class OpenWearablesModule : Module() {
     }
 
     // MARK: - Workout writing (iOS only)
-    Function("getWorkoutWriteStatus") {
+    AsyncFunction("getWorkoutWriteStatus") Coroutine { _: Unit? ->
       // Writing workouts is HealthKit-only for now.
-      "unavailable"
+      return@Coroutine "unavailable"
     }
 
     AsyncFunction("requestWorkoutWriteAuthorization") Coroutine { _: Unit? ->

@@ -100,8 +100,10 @@ public class OpenWearablesModule: Module {
         }
         
         // MARK: - Workout writing (iOS only)
-        Function("getWorkoutWriteStatus") {
-            return OpenWearablesWorkoutWriter.writeStatus().rawValue
+        AsyncFunction("getWorkoutWriteStatus") { (promise: Promise) in
+            OpenWearablesWorkoutWriter.writeStatus { status in
+                promise.resolve(status.rawValue)
+            }
         }
 
         AsyncFunction("requestWorkoutWriteAuthorization") { (promise: Promise) in

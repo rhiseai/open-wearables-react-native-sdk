@@ -304,7 +304,7 @@ The SDK only reads HealthKit for sync. These calls let the host app write its ow
 workouts back, without double counting a workout a watch or another app already recorded.
 
 ```ts
-if (OpenWearablesHealthSDK.getWorkoutWriteStatus() === "notDetermined") {
+if ((await OpenWearablesHealthSDK.getWorkoutWriteStatus()) === "notDetermined") {
   await OpenWearablesHealthSDK.requestWorkoutWriteAuthorization();
 }
 const overlaps = await OpenWearablesHealthSDK.findOverlappingWorkouts(start, end);
@@ -319,11 +319,14 @@ if (!overlaps.some((workout) => !workout.isOwnSource)) {
 }
 ```
 
-#### `getWorkoutWriteStatus(): WorkoutWriteStatus`
+#### `getWorkoutWriteStatus(): Promise<WorkoutWriteStatus>`
 
-`"authorized"`, `"denied"`, `"notDetermined"` or `"unavailable"`, from
-`HKHealthStore.authorizationStatus(for: .workoutType())`. HealthKit reports write access
-truthfully, so this is reliable, unlike read access. Synchronous.
+`"authorized"`, `"denied"`, `"notDetermined"` or `"unavailable"`. `authorized` comes from
+`HKHealthStore.authorizationStatus(for: .workoutType())`, which reports write access truthfully.
+That call also answers `sharingDenied` for a type that was only ever requested for reading (as
+the sync flow does for workouts), so the other states come from
+`getRequestStatusForAuthorization`: `shouldRequest` is `"notDetermined"`, `unnecessary` is
+`"denied"`.
 
 #### `requestWorkoutWriteAuthorization(): Promise<WorkoutWriteStatus>`
 
