@@ -44,6 +44,7 @@ underlying native SDKs differ:
 | `getHealthAuthorizationRequestStatus(types)` | Wraps `HKHealthStore.getRequestStatusForAuthorization`. | **Always `"unnecessary"`** — HealthKit introspection has no Health Connect equivalent here. |
 | `probeReadableSamples(types, sinceMillis, limit?)` | One bounded `HKSampleQuery` per type. | **Always `{}`** — iOS-only. |
 | `isHealthDataAvailable()` | `HKHealthStore.isHealthDataAvailable()`. | **Always `false`** — iOS-only. |
+| `getWorkoutWriteStatus()`, `requestWorkoutWriteAuthorization()`, `findOverlappingWorkouts(...)`, `saveWorkout(input)` | Write workouts through `HKWorkoutBuilder`. | **Stubs** — status `"unavailable"`, no overlaps, save resolves `{ status: "unavailable" }`. |
 | `clearPermanentSyncFailure()` | Drops a sync session paused by a terminal upload response. | **Always `false`** — the Android SDK never pauses sync this way. |
 
 `getAvailableProviders()` returns a single `apple` / "Apple Health" entry on iOS, and the installed
@@ -294,6 +295,62 @@ Android it resolves `{}`.
 
 Returns `HKHealthStore.isHealthDataAvailable()` on iOS — `false` on devices without HealthKit, where
 the two calls above cannot produce a meaningful answer. Synchronous. Always `false` on Android.
+
+---
+
+### Writing workouts (iOS)
+
+The SDK only reads HealthKit for sync. These calls let the host app write its own finished
+workouts back, without double counting a workout a watch or another app already recorded.
+
+```ts
+if ((await OpenWearablesHealthSDK.getWorkoutWriteStatus()) === "notDetermined") {
+  await OpenWearablesHealthSDK.requestWorkoutWriteAuthorization();
+}
+const overlaps = await OpenWearablesHealthSDK.findOverlappingWorkouts(start, end);
+if (!overlaps.some((workout) => !workout.isOwnSource)) {
+  await OpenWearablesHealthSDK.saveWorkout({
+    activityType: "traditionalStrengthTraining",
+    startMillis: start,
+    endMillis: end,
+    externalId: session.id,
+    totalVolumeKg: 6100,
+  });
+}
+```
+
+#### `getWorkoutWriteStatus(): Promise<WorkoutWriteStatus>`
+
+`"authorized"`, `"denied"`, `"notDetermined"` or `"unavailable"`. `authorized` comes from
+`HKHealthStore.authorizationStatus(for: .workoutType())`, which reports write access truthfully.
+That call also answers `sharingDenied` for a type that was only ever requested for reading (as
+the sync flow does for workouts), so the other states come from
+`getRequestStatusForAuthorization`: `shouldRequest` is `"notDetermined"`, `unnecessary` is
+`"denied"`.
+
+#### `requestWorkoutWriteAuthorization(): Promise<WorkoutWriteStatus>`
+
+Asks to write workouts and active energy, and to read workouts (needed to see other sources in
+`findOverlappingWorkouts`). The sheet only appears for types never presented before. Resolves the
+resulting write status.
+
+#### `findOverlappingWorkouts(startMillis: number, endMillis: number): Promise<HealthWorkoutSummary[]>`
+
+Every workout (up to 50) that intersects the window, with its activity type, source bundle id and
+`isOwnSource`. If workout read access was denied, HealthKit returns only this app's own workouts,
+so an empty result can also mean "cannot see other sources".
+
+#### `saveWorkout(input: SaveWorkoutInput): Promise<SaveWorkoutResult>`
+
+Builds one workout with `HKWorkoutBuilder` from `startMillis` to `endMillis`, adds an active energy
+sample when `activeEnergyKcal > 0`, and stores `externalId` as `HKMetadataKeyExternalUUID`, the app
+name as `HKMetadataKeyWorkoutBrandName`, and `totalVolumeKg` / `title` as the custom metadata keys
+`OpenWearablesTotalVolumeKg` / `OpenWearablesWorkoutTitle`.
+
+The write is idempotent per `externalId`: when this app already saved a workout with that id the
+promise resolves `{ status: "duplicate", uuid }` without writing again. Without write access it
+resolves `"denied"` / `"notDetermined"` / `"unavailable"` instead of prompting. Errors resolve
+`{ status: "failed", error }`; the promise never rejects.
 
 ---
 

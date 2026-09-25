@@ -105,6 +105,69 @@ export type HealthAuthorizationRequestStatus =
  */
 export type ReadableSampleCounts = Record<string, number>;
 
+/** HealthKit workout activity types that `saveWorkout` can write. */
+export type HealthWorkoutActivityType =
+  | "traditionalStrengthTraining"
+  | "functionalStrengthTraining"
+  | "highIntensityIntervalTraining"
+  | "crossTraining"
+  | "coreTraining"
+  | "mixedCardio"
+  | "running"
+  | "walking"
+  | "cycling"
+  | "swimming"
+  | "rowing"
+  | "elliptical"
+  | "stairClimbing"
+  | "yoga"
+  | "pilates"
+  | "flexibility"
+  /** iOS 16 and later; `saveWorkout` fails with `failed` below that. */
+  | "swimBikeRun"
+  | "other";
+
+/**
+ * Whether this app may write workouts to HealthKit. Write access, unlike read
+ * access, is reported truthfully. `"unavailable"` on Android and on devices
+ * without HealthKit.
+ */
+export type WorkoutWriteStatus =
+  | "unavailable"
+  | "notDetermined"
+  | "denied"
+  | "authorized";
+
+/** A workout already in HealthKit whose time range overlaps the query window. */
+export type HealthWorkoutSummary = {
+  uuid: string;
+  activityType: HealthWorkoutActivityType;
+  startMillis: number;
+  endMillis: number;
+  sourceBundleId: string;
+  sourceName: string;
+  /** True when this app wrote it. */
+  isOwnSource: boolean;
+  /** `HKMetadataKeyExternalUUID`, when the writer set one. */
+  externalId: string | null;
+};
+
+export type SaveWorkoutInput = {
+  activityType: HealthWorkoutActivityType;
+  startMillis: number;
+  endMillis: number;
+  /** Stable host-app id; makes the write idempotent. */
+  externalId: string;
+  activeEnergyKcal?: number | null;
+  totalVolumeKg?: number | null;
+  title?: string | null;
+};
+
+export type SaveWorkoutResult =
+  | { status: "saved" | "duplicate"; uuid: string }
+  | { status: "unavailable" | "notDetermined" | "denied" }
+  | { status: "failed"; error: string };
+
 export type HealthDataProvider = {
   id: string;
   displayName: string;
