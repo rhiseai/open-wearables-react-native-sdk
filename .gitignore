@@ -9,6 +9,8 @@ jsconfig.json
 # Xcode
 #
 build/
+# The compiled JS is committed so a git install needs no build step (Lucie, RHISE-5687)
+!/build/
 *.pbxuser
 !default.pbxuser
 *.mode1v3

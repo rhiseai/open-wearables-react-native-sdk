@@ -1,0 +1,35 @@
+import { NativeModule } from "expo-modules-core";
+import { HealthAuthorizationRequestStatus, HealthDataType, OpenWearablesModuleEvents, HealthDataProvider, HealthWorkoutSummary, OWLogLevel, ReadableSampleCounts, SaveWorkoutInput, SaveWorkoutResult, StoredCredentials, SyncStatus, WorkoutWriteStatus } from "./OpenWearables.types";
+declare class OpenWearablesModule extends NativeModule<OpenWearablesModuleEvents> {
+    configure(host: string, customSyncURL?: string): void;
+    signIn(userId: string, accessToken: string | null, refreshToken: string | null, apiKey: string | null): Promise<void>;
+    signOut(): Promise<void>;
+    updateTokens(accessToken: string, refreshToken: string | null): void;
+    restoreSession(): string | null;
+    isSessionValid(): boolean;
+    requestAuthorization(types: HealthDataType[]): Promise<boolean>;
+    isHealthDataAvailable(): boolean;
+    getHealthAuthorizationRequestStatus(types: HealthDataType[]): Promise<HealthAuthorizationRequestStatus>;
+    probeReadableSamples(types: HealthDataType[], sinceMillis: number, limit?: number): Promise<ReadableSampleCounts>;
+    getWorkoutWriteStatus(): Promise<WorkoutWriteStatus>;
+    requestWorkoutWriteAuthorization(): Promise<WorkoutWriteStatus>;
+    findOverlappingWorkouts(startMillis: number, endMillis: number): Promise<HealthWorkoutSummary[]>;
+    saveWorkout(input: SaveWorkoutInput): Promise<SaveWorkoutResult>;
+    setSyncInterval(minutes: number): void;
+    startBackgroundSync(syncDaysBack: number | null): Promise<boolean>;
+    stopBackgroundSync(): Promise<void>;
+    syncNow(): Promise<void>;
+    syncRecentWindow(sinceMillis: number, types?: HealthDataType[]): Promise<boolean>;
+    isSyncActive(): boolean;
+    getSyncStatus(): SyncStatus;
+    resumeSync(): Promise<boolean>;
+    resetAnchors(): void;
+    clearPermanentSyncFailure(): boolean;
+    getStoredCredentials(): StoredCredentials;
+    getAvailableProviders(): HealthDataProvider[];
+    setProvider(providerId: string): boolean;
+    setLogLevel(logLevel: OWLogLevel): void;
+    getLogLevel(): OWLogLevel;
+}
+declare const _default: OpenWearablesModule;
+export default _default;
