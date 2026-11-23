@@ -30,11 +30,14 @@ internal enum OpenWearablesHealthProbe {
     internal static let defaultProbeLimit = 1
     internal static let maximumProbeLimit = 100
 
-    /// Same exclusion the native SDK applies in `getQueryableTypes()`. The blood
-    /// pressure correlation is never part of the requested read set, so asking
-    /// HealthKit about it would report `shouldRequest` forever.
+    /// Same exclusion the native SDK applies in `typesForAuthorization()`. The
+    /// blood pressure and food correlations are never part of the requested read
+    /// set: asking HealthKit about blood pressure would report `shouldRequest`
+    /// forever, and HealthKit refuses the food correlation in an authorization
+    /// request with `NSInvalidArgumentException`, so it is left out here too.
     private static let disallowedIdentifiers: Set<String> = [
-        HKCorrelationTypeIdentifier.bloodPressure.rawValue
+        HKCorrelationTypeIdentifier.bloodPressure.rawValue,
+        HKCorrelationTypeIdentifier.food.rawValue,
     ]
 
     internal static var isHealthDataAvailable: Bool {

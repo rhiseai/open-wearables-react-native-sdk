@@ -25,6 +25,10 @@ var HealthDataType;
     HealthDataType["HeartRate"] = "heartRate";
     HealthDataType["RestingHeartRate"] = "restingHeartRate";
     HealthDataType["HeartRateVariabilitySDNN"] = "heartRateVariabilitySDNN";
+    /** iOS 27 and later; skipped on older devices and in builds made before Xcode 27. */
+    HealthDataType["HeartRateVariabilityRMSSD"] = "heartRateVariabilityRMSSD";
+    /** iOS 16 and later. */
+    HealthDataType["HeartRateRecoveryOneMinute"] = "heartRateRecoveryOneMinute";
     HealthDataType["Vo2Max"] = "vo2Max";
     HealthDataType["OxygenSaturation"] = "oxygenSaturation";
     HealthDataType["RespiratoryRate"] = "respiratoryRate";
@@ -51,7 +55,7 @@ var HealthDataType;
     HealthDataType["CervicalMucusQuality"] = "cervicalMucusQuality";
     HealthDataType["OvulationTestResult"] = "ovulationTestResult";
     HealthDataType["SexualActivity"] = "sexualActivity";
-    // Nutrition
+    // Nutrition (iOS: every HealthKit dietary quantity type)
     HealthDataType["DietaryEnergyConsumed"] = "dietaryEnergyConsumed";
     HealthDataType["DietaryCarbohydrates"] = "dietaryCarbohydrates";
     HealthDataType["DietaryProtein"] = "dietaryProtein";
@@ -60,6 +64,43 @@ var HealthDataType;
     HealthDataType["DietaryFiber"] = "dietaryFiber";
     HealthDataType["DietarySugar"] = "dietarySugar";
     HealthDataType["DietaryCaffeine"] = "dietaryCaffeine";
+    HealthDataType["DietaryFatSaturated"] = "dietaryFatSaturated";
+    HealthDataType["DietaryFatMonounsaturated"] = "dietaryFatMonounsaturated";
+    HealthDataType["DietaryFatPolyunsaturated"] = "dietaryFatPolyunsaturated";
+    HealthDataType["DietaryCholesterol"] = "dietaryCholesterol";
+    HealthDataType["DietarySodium"] = "dietarySodium";
+    HealthDataType["DietaryPotassium"] = "dietaryPotassium";
+    HealthDataType["DietaryChloride"] = "dietaryChloride";
+    HealthDataType["DietaryCalcium"] = "dietaryCalcium";
+    HealthDataType["DietaryIron"] = "dietaryIron";
+    HealthDataType["DietaryMagnesium"] = "dietaryMagnesium";
+    HealthDataType["DietaryPhosphorus"] = "dietaryPhosphorus";
+    HealthDataType["DietaryVitaminA"] = "dietaryVitaminA";
+    HealthDataType["DietaryVitaminB6"] = "dietaryVitaminB6";
+    HealthDataType["DietaryVitaminB12"] = "dietaryVitaminB12";
+    HealthDataType["DietaryVitaminC"] = "dietaryVitaminC";
+    HealthDataType["DietaryVitaminD"] = "dietaryVitaminD";
+    HealthDataType["DietaryVitaminE"] = "dietaryVitaminE";
+    HealthDataType["DietaryVitaminK"] = "dietaryVitaminK";
+    HealthDataType["DietaryThiamin"] = "dietaryThiamin";
+    HealthDataType["DietaryRiboflavin"] = "dietaryRiboflavin";
+    HealthDataType["DietaryNiacin"] = "dietaryNiacin";
+    HealthDataType["DietaryFolate"] = "dietaryFolate";
+    HealthDataType["DietaryBiotin"] = "dietaryBiotin";
+    HealthDataType["DietaryPantothenicAcid"] = "dietaryPantothenicAcid";
+    HealthDataType["DietaryZinc"] = "dietaryZinc";
+    HealthDataType["DietaryCopper"] = "dietaryCopper";
+    HealthDataType["DietaryManganese"] = "dietaryManganese";
+    HealthDataType["DietarySelenium"] = "dietarySelenium";
+    HealthDataType["DietaryChromium"] = "dietaryChromium";
+    HealthDataType["DietaryMolybdenum"] = "dietaryMolybdenum";
+    HealthDataType["DietaryIodine"] = "dietaryIodine";
+    /**
+     * The HealthKit food correlation (a meal and its nutrients). iOS reads it
+     * whenever any dietary type is requested, so it never needs to be passed;
+     * HealthKit grants it through the dietary types, and it shows no permission row.
+     */
+    HealthDataType["Food"] = "food";
     // Workout
     HealthDataType["Workout"] = "workout";
     // Aliases

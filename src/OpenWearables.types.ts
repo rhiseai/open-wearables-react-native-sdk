@@ -36,6 +36,10 @@ export enum HealthDataType {
   HeartRate = "heartRate",
   RestingHeartRate = "restingHeartRate",
   HeartRateVariabilitySDNN = "heartRateVariabilitySDNN",
+  /** iOS 27 and later; skipped on older devices and in builds made before Xcode 27. */
+  HeartRateVariabilityRMSSD = "heartRateVariabilityRMSSD",
+  /** iOS 16 and later. */
+  HeartRateRecoveryOneMinute = "heartRateRecoveryOneMinute",
   Vo2Max = "vo2Max",
   OxygenSaturation = "oxygenSaturation",
   RespiratoryRate = "respiratoryRate",
@@ -67,7 +71,7 @@ export enum HealthDataType {
   OvulationTestResult = "ovulationTestResult",
   SexualActivity = "sexualActivity",
 
-  // Nutrition
+  // Nutrition (iOS: every HealthKit dietary quantity type)
   DietaryEnergyConsumed = "dietaryEnergyConsumed",
   DietaryCarbohydrates = "dietaryCarbohydrates",
   DietaryProtein = "dietaryProtein",
@@ -76,6 +80,43 @@ export enum HealthDataType {
   DietaryFiber = "dietaryFiber",
   DietarySugar = "dietarySugar",
   DietaryCaffeine = "dietaryCaffeine",
+  DietaryFatSaturated = "dietaryFatSaturated",
+  DietaryFatMonounsaturated = "dietaryFatMonounsaturated",
+  DietaryFatPolyunsaturated = "dietaryFatPolyunsaturated",
+  DietaryCholesterol = "dietaryCholesterol",
+  DietarySodium = "dietarySodium",
+  DietaryPotassium = "dietaryPotassium",
+  DietaryChloride = "dietaryChloride",
+  DietaryCalcium = "dietaryCalcium",
+  DietaryIron = "dietaryIron",
+  DietaryMagnesium = "dietaryMagnesium",
+  DietaryPhosphorus = "dietaryPhosphorus",
+  DietaryVitaminA = "dietaryVitaminA",
+  DietaryVitaminB6 = "dietaryVitaminB6",
+  DietaryVitaminB12 = "dietaryVitaminB12",
+  DietaryVitaminC = "dietaryVitaminC",
+  DietaryVitaminD = "dietaryVitaminD",
+  DietaryVitaminE = "dietaryVitaminE",
+  DietaryVitaminK = "dietaryVitaminK",
+  DietaryThiamin = "dietaryThiamin",
+  DietaryRiboflavin = "dietaryRiboflavin",
+  DietaryNiacin = "dietaryNiacin",
+  DietaryFolate = "dietaryFolate",
+  DietaryBiotin = "dietaryBiotin",
+  DietaryPantothenicAcid = "dietaryPantothenicAcid",
+  DietaryZinc = "dietaryZinc",
+  DietaryCopper = "dietaryCopper",
+  DietaryManganese = "dietaryManganese",
+  DietarySelenium = "dietarySelenium",
+  DietaryChromium = "dietaryChromium",
+  DietaryMolybdenum = "dietaryMolybdenum",
+  DietaryIodine = "dietaryIodine",
+  /**
+   * The HealthKit food correlation (a meal and its nutrients). iOS reads it
+   * whenever any dietary type is requested, so it never needs to be passed;
+   * HealthKit grants it through the dietary types, and it shows no permission row.
+   */
+  Food = "food",
 
   // Workout
   Workout = "workout",

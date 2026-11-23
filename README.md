@@ -551,7 +551,7 @@ The following health data type identifiers can be passed to `requestAuthorizatio
 `steps`, `distanceWalkingRunning`, `distanceCycling`, `flightsClimbed`, `walkingSpeed`, `walkingStepLength`, `walkingAsymmetryPercentage`, `walkingDoubleSupportPercentage`, `sixMinuteWalkTestDistance`, `activeEnergy`, `basalEnergy`
 
 **Heart & Cardiovascular**
-`heartRate`, `restingHeartRate`, `heartRateVariabilitySDNN`, `vo2Max`, `oxygenSaturation`, `respiratoryRate`
+`heartRate`, `restingHeartRate`, `heartRateVariabilitySDNN`, `heartRateVariabilityRMSSD` (iOS 27+), `heartRateRecoveryOneMinute` (iOS 16+), `vo2Max`, `oxygenSaturation`, `respiratoryRate`
 
 **Body Measurements**
 `bodyMass`, `height`, `bmi`, `bodyFatPercentage`, `leanBodyMass`, `waistCircumference`, `bodyTemperature`, `basalBodyTemperature`
@@ -566,7 +566,9 @@ The following health data type identifiers can be passed to `requestAuthorizatio
 `menstrualFlow`, `cervicalMucusQuality`, `ovulationTestResult`, `sexualActivity`
 
 **Nutrition**
-`dietaryEnergyConsumed`, `dietaryCarbohydrates`, `dietaryProtein`, `dietaryFatTotal`, `dietaryWater`, `dietaryFiber`, `dietarySugar`, `dietaryCaffeine`
+`dietaryEnergyConsumed`, `dietaryCarbohydrates`, `dietaryProtein`, `dietaryFatTotal`, `dietaryWater`, `dietaryFiber`, `dietarySugar`, `dietaryCaffeine`, `dietaryFatSaturated`, `dietaryFatMonounsaturated`, `dietaryFatPolyunsaturated`, `dietaryCholesterol`, `dietarySodium`, `dietaryPotassium`, `dietaryChloride`, `dietaryCalcium`, `dietaryIron`, `dietaryMagnesium`, `dietaryPhosphorus`, `dietaryVitaminA`, `dietaryVitaminB6`, `dietaryVitaminB12`, `dietaryVitaminC`, `dietaryVitaminD`, `dietaryVitaminE`, `dietaryVitaminK`, `dietaryThiamin`, `dietaryRiboflavin`, `dietaryNiacin`, `dietaryFolate`, `dietaryBiotin`, `dietaryPantothenicAcid`, `dietaryZinc`, `dietaryCopper`, `dietaryManganese`, `dietarySelenium`, `dietaryChromium`, `dietaryMolybdenum`, `dietaryIodine`, `food`
+
+On iOS any dietary type also reads the `food` correlation (a meal with its nutrients); `food` needs no request of its own and shows no permission row.
 
 **Workout**
 `workout`

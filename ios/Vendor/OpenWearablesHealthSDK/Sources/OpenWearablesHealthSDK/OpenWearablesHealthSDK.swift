@@ -41,7 +41,7 @@ public final class OpenWearablesHealthSDK: NSObject, URLSessionDelegate, URLSess
     /// Shared singleton instance.
     public static let shared = OpenWearablesHealthSDK()
     
-    internal static let sdkVersion = "0.15.0"
+    internal static let sdkVersion = "0.16.0"
     
     // MARK: - Public Callbacks
     
@@ -747,9 +747,15 @@ public final class OpenWearablesHealthSDK: NSObject, URLSessionDelegate, URLSess
             ) { [weak self] _, samples, error in
                 if let error = error {
                     self?.logMessage("syncRecentWindow: \(self?.shortTypeName(type.identifier) ?? type.identifier) error: \(error.localizedDescription)")
-                    collectLock.lock()
-                    queryFailed = true
-                    collectLock.unlock()
+                    // A type HealthKit cannot read contributes nothing, as it does to the
+                    // export, instead of failing the replay of every other type on every
+                    // app open. Any other failure fails the replay, so the host keeps its
+                    // window and replays it.
+                    if self?.readFailure(of: error) != .unreadable {
+                        collectLock.lock()
+                        queryFailed = true
+                        collectLock.unlock()
+                    }
                 }
                 if let samples = samples, !samples.isEmpty {
                     collectLock.lock()
@@ -777,25 +783,47 @@ public final class OpenWearablesHealthSDK: NSObject, URLSessionDelegate, URLSess
                 completion(true)
                 return
             }
-            let chunks = stride(from: 0, to: collected.count, by: self.recordsPerChunk).map {
-                Array(collected[$0..<min($0 + self.recordsPerChunk, collected.count)])
-            }
-            self.uploadRecentWindowChunks(
-                chunks,
-                index: 0,
-                endpoint: endpoint,
-                credential: credential,
-                generation: generation
-            ) { ok in
-                self.finishSync(generation: generation)
-                self.logMessage("syncRecentWindow: processed \(collected.count) samples in \(chunks.count) chunk(s) (ok=\(ok))")
-                completion(ok)
+            self.fetchFoodChildIds(forLooseDietaryIn: collected) { [weak self] lookedUpFoodChildIds in
+                guard let self = self else { completion(false); return }
+                let window = self.recentWindowChunks(collected, lookedUpFoodChildIds: lookedUpFoodChildIds)
+                self.uploadRecentWindowChunks(
+                    window.chunks,
+                    foodChildIds: window.foodChildIds,
+                    index: 0,
+                    endpoint: endpoint,
+                    credential: credential,
+                    generation: generation
+                ) { ok in
+                    self.finishSync(generation: generation)
+                    self.logMessage("syncRecentWindow: processed \(collected.count) samples in \(window.chunks.count) chunk(s) (ok=\(ok))")
+                    completion(ok)
+                }
             }
         }
     }
 
+    /// Splits a recent-window replay into upload chunks, and names the dietary samples
+    /// every chunk leaves to their food row.
+    ///
+    /// The replay reads a food correlation and its dietary children as separate samples,
+    /// so a child can fall into another chunk than its food, or its food can sit outside
+    /// the window. Sent on its own it would go out loose (`parentId` null) next to the
+    /// food row, and the backend would store it twice, as a meal nutrient and as a time
+    /// series. The children of every food in the window, and those `fetchFoodChildIds`
+    /// found for foods around it, are therefore sent only by their food, as in a sync round.
+    internal func recentWindowChunks(
+        _ samples: [HKSample],
+        lookedUpFoodChildIds: Set<UUID>
+    ) -> (chunks: [[HKSample]], foodChildIds: Set<UUID>) {
+        let chunks = stride(from: 0, to: samples.count, by: recordsPerChunk).map {
+            Array(samples[$0..<min($0 + recordsPerChunk, samples.count)])
+        }
+        return (chunks, _foodChildIds(in: samples).union(lookedUpFoodChildIds))
+    }
+
     private func uploadRecentWindowChunks(
         _ chunks: [[HKSample]],
+        foodChildIds: Set<UUID>,
         index: Int,
         endpoint: URL,
         credential: String,
@@ -811,7 +839,7 @@ public final class OpenWearablesHealthSDK: NSObject, URLSessionDelegate, URLSess
             return
         }
         uploadCombinedPayload(
-            payload: buildCombinedPayload(samples: chunks[index]),
+            payload: buildCombinedPayload(samples: chunks[index], knownFoodChildIds: foodChildIds),
             endpoint: endpoint,
             credential: credential,
             generation: generation
@@ -822,6 +850,7 @@ public final class OpenWearablesHealthSDK: NSObject, URLSessionDelegate, URLSess
             }
             self.uploadRecentWindowChunks(
                 chunks,
+                foodChildIds: foodChildIds,
                 index: index + 1,
                 endpoint: endpoint,
                 credential: credential,
@@ -881,7 +910,7 @@ public final class OpenWearablesHealthSDK: NSObject, URLSessionDelegate, URLSess
             return
         }
         
-        let readTypes = Set(getQueryableTypes())
+        let readTypes = Set(typesForAuthorization())
         logMessage("Requesting read-only auth for \(readTypes.count) types")
         
         healthStore.requestAuthorization(toShare: nil, read: readTypes) { ok, _ in
@@ -894,12 +923,27 @@ public final class OpenWearablesHealthSDK: NSObject, URLSessionDelegate, URLSess
     }
     
     internal func getQueryableTypes() -> [HKSampleType] {
+        // Blood pressure is synced from the systolic and diastolic samples.
+        // Food stays here: the correlation is queried for the parent meal, but
+        // HealthKit refuses it in requestAuthorization (see typesForAuthorization).
         let disallowedIdentifiers: Set<String> = [
             HKCorrelationTypeIdentifier.bloodPressure.rawValue
         ]
         
         return trackedTypes.filter { type in
             !disallowedIdentifiers.contains(type.identifier)
+        }
+    }
+
+    /// Types safe to pass to `HKHealthStore.requestAuthorization`.
+    ///
+    /// `HKCorrelationTypeIdentifierFood` (and blood pressure, already dropped by
+    /// `getQueryableTypes`) cannot be authorized directly. HealthKit throws
+    /// `NSInvalidArgumentException` if they are in the read set. Read access to a
+    /// food correlation comes from the dietary quantity types it contains.
+    internal func typesForAuthorization() -> [HKSampleType] {
+        getQueryableTypes().filter { type in
+            type.identifier != HKCorrelationTypeIdentifier.food.rawValue
         }
     }
 
@@ -1309,55 +1353,118 @@ public final class OpenWearablesHealthSDK: NSObject, URLSessionDelegate, URLSess
                 return
             }
             
-            let payload = self.buildCombinedPayload(samples: allSamples)
-            
-            self.uploadCombinedPayload(
-                payload: payload, endpoint: endpoint, credential: freshCredential,
-                generation: rrState.generation
-            ) { [weak self] sendSuccess in
+            self.fetchFoodChildIds(forLooseDietaryIn: allSamples) { [weak self] knownFoodChildIds in
                 guard let self = self else { completion(false); return }
-                if !sendSuccess { completion(false); return }
                 if self.isSyncCancelled(generation: rrState.generation) {
                     completion(false)
                     return
                 }
-                
-                // Phase 3: Update progress for all types that had data
-                for result in withData {
-                    if fullExport {
-                        self.updateTypeProgress(
-                            typeIdentifier: result.type.identifier, sentInChunk: result.count,
-                            isComplete: false, anchorData: nil, olderThan: result.nextOlderThan
-                        )
-                    } else {
-                        self.updateTypeProgress(
-                            typeIdentifier: result.type.identifier, sentInChunk: result.count,
-                            isComplete: result.isDone, anchorData: result.anchorData
-                        )
-                        if result.isDone {
-                            rrState.completedTypes.insert(result.type.identifier)
+
+                let payload = self.buildCombinedPayload(samples: allSamples, knownFoodChildIds: knownFoodChildIds)
+
+                self.uploadCombinedPayload(
+                    payload: payload, endpoint: endpoint, credential: freshCredential,
+                    generation: rrState.generation
+                ) { [weak self] sendSuccess in
+                    guard let self = self else { completion(false); return }
+                    if !sendSuccess { completion(false); return }
+                    if self.isSyncCancelled(generation: rrState.generation) {
+                        completion(false)
+                        return
+                    }
+
+                    // Phase 3: Update progress for all types that had data
+                    for result in withData {
+                        if fullExport {
+                            self.updateTypeProgress(
+                                typeIdentifier: result.type.identifier, sentInChunk: result.count,
+                                isComplete: false, anchorData: nil, olderThan: result.nextOlderThan
+                            )
+                        } else {
+                            self.updateTypeProgress(
+                                typeIdentifier: result.type.identifier, sentInChunk: result.count,
+                                isComplete: result.isDone, anchorData: result.anchorData
+                            )
+                            if result.isDone {
+                                rrState.completedTypes.insert(result.type.identifier)
+                            }
                         }
                     }
-                }
-                
-                // Phase 4: For full export, capture anchors for done types
-                let fullExportDone = withData.filter { $0.isDone }.map { $0.type } + doneTypesForAnchorCapture.filter { t in !withData.contains(where: { $0.type == t }) }
-                if fullExport && !fullExportDone.isEmpty {
-                    self.captureAnchorsForDoneTypes(types: fullExportDone, index: 0, rrState: rrState) { captureOk in
-                        guard captureOk else { completion(false); return }
+
+                    // Phase 4: For full export, capture anchors for done types
+                    let fullExportDone = withData.filter { $0.isDone }.map { $0.type } + doneTypesForAnchorCapture.filter { t in !withData.contains(where: { $0.type == t }) }
+                    if fullExport && !fullExportDone.isEmpty {
+                        self.captureAnchorsForDoneTypes(types: fullExportDone, index: 0, rrState: rrState) { captureOk in
+                            guard captureOk else { completion(false); return }
+                            self.processNextRound(
+                                types: types, fullExport: fullExport, endpoint: endpoint,
+                                rrState: rrState, completion: completion
+                            )
+                        }
+                    } else {
                         self.processNextRound(
                             types: types, fullExport: fullExport, endpoint: endpoint,
                             rrState: rrState, completion: completion
                         )
                     }
-                } else {
-                    self.processNextRound(
-                        types: types, fullExport: fullExport, endpoint: endpoint,
-                        rrState: rrState, completion: completion
-                    )
                 }
             }
         }
+    }
+
+    // MARK: - Food parents of loose dietary samples
+
+    /// Each type has its own cursor, so a dietary sample can come in a round where its
+    /// food correlation does not (the food query returned it in another round). Look up
+    /// the food correlations around such samples so the payload leaves them to the food
+    /// query instead of also sending them as loose samples with no `parentId`.
+    /// Returns an empty set when there is nothing to check or the lookup fails - the
+    /// samples then go out loose, as before.
+    private func fetchFoodChildIds(
+        forLooseDietaryIn samples: [HKSample],
+        completion: @escaping (Set<UUID>) -> Void
+    ) {
+        // Without the food type tracked, nothing else would ever send these samples.
+        guard let foodType = HKObjectType.correlationType(forIdentifier: .food),
+              trackedTypes.contains(where: { $0.identifier == foodType.identifier }) else {
+            completion([])
+            return
+        }
+
+        let childIdsInRound = Set(samples
+            .compactMap { $0 as? HKCorrelation }
+            .filter { $0.correlationType.identifier == foodType.identifier }
+            .flatMap { $0.objects.map { $0.uuid } })
+        let looseDietary = samples
+            .compactMap { $0 as? HKQuantitySample }
+            .filter { $0.quantityType.identifier.hasPrefix("HKQuantityTypeIdentifierDietary") && !childIdsInRound.contains($0.uuid) }
+        guard let start = looseDietary.map({ $0.startDate }).min(),
+              let end = looseDietary.map({ $0.endDate }).max() else {
+            completion([])
+            return
+        }
+
+        // Children normally share the food's dates; the margin catches ones that don't.
+        let margin: TimeInterval = 24 * 60 * 60
+        let predicate = HKQuery.predicateForSamples(
+            withStart: start.addingTimeInterval(-margin), end: end.addingTimeInterval(margin), options: []
+        )
+        let query = HKCorrelationQuery(type: foodType, predicate: predicate, samplePredicates: nil) {
+            [weak self] _, correlations, error in
+            if let error = error {
+                self?.logMessage("food: parent lookup for \(looseDietary.count) dietary samples failed - \(error.localizedDescription)")
+                completion([])
+                return
+            }
+            var ids = Set<UUID>()
+            for correlation in correlations ?? [] {
+                for object in correlation.objects {
+                    ids.insert(object.uuid)
+                }
+            }
+            completion(ids)
+        }
+        healthStore.execute(query)
     }
     
     // MARK: - Fetch all types in a round (no network, accumulates results)
@@ -1424,29 +1531,53 @@ public final class OpenWearablesHealthSDK: NSObject, URLSessionDelegate, URLSess
         }
         
         let type = types[index]
-        captureCurrentAnchor(for: type) { [weak self] anchor in
+        captureCurrentAnchor(for: type) { [weak self] outcome in
             guard let self = self else { completion(false); return }
             if self.isSyncCancelled(generation: rrState.generation) {
                 completion(false)
                 return
             }
-            
-            // Without a valid anchor the type must NOT be marked complete: the next
-            // incremental sync would run an anchored query from nil and re-crawl the
-            // whole history oldest-first. Pause the sync instead - on resume the type
-            // re-sends its last chunk (deduplicated server-side) and retries capture.
-            guard let anchor = anchor,
-                  let anchorData = try? NSKeyedArchiver.archivedData(withRootObject: anchor, requiringSecureCoding: true) else {
-                self.logMessage("  \(self.shortTypeName(type.identifier)): anchor capture failed - leaving type incomplete, pausing sync")
+            guard self.recordAnchorCapture(outcome, for: type.identifier) else {
                 completion(false)
                 return
             }
-            
-            self.updateTypeProgress(typeIdentifier: type.identifier, sentInChunk: 0, isComplete: true, anchorData: anchorData)
             rrState.completedTypes.insert(type.identifier)
-            self.fireTypeCompletedLog(type.identifier)
-            self.logMessage("  \(self.shortTypeName(type.identifier)): complete (anchor captured)")
             self.captureAnchorsForDoneTypes(types: types, index: index + 1, rrState: rrState, completion: completion)
+        }
+    }
+
+    /// Records how a done type's anchor capture came out, and says whether the export
+    /// goes on to the next type.
+    ///
+    /// - A captured anchor completes the type with it; incremental sync continues from it.
+    /// - An unreadable type completes without one. Nothing was read from it, so once
+    ///   HealthKit allows it, incremental sync reads it from the start, which is the
+    ///   export it never had. Leaving it incomplete paused every run at this type for
+    ///   good: the initial export never finished and no new data was sent (RHISE-8003).
+    /// - Anything else leaves the type incomplete and pauses the run. A readable type
+    ///   completed without an anchor would make the next incremental sync re-crawl its
+    ///   whole history oldest-first; on resume the type re-sends its last chunk
+    ///   (deduplicated server-side) and retries the capture.
+    internal func recordAnchorCapture(_ outcome: AnchorCaptureOutcome, for typeIdentifier: String) -> Bool {
+        let name = shortTypeName(typeIdentifier)
+        switch outcome {
+        case .captured(let anchor):
+            guard let anchorData = try? NSKeyedArchiver.archivedData(withRootObject: anchor, requiringSecureCoding: true) else {
+                logMessage("  \(name): anchor capture failed - leaving type incomplete, pausing sync")
+                return false
+            }
+            updateTypeProgress(typeIdentifier: typeIdentifier, sentInChunk: 0, isComplete: true, anchorData: anchorData)
+            fireTypeCompletedLog(typeIdentifier)
+            logMessage("  \(name): complete (anchor captured)")
+            return true
+        case .unreadable:
+            updateTypeProgress(typeIdentifier: typeIdentifier, sentInChunk: 0, isComplete: true, anchorData: nil)
+            fireTypeCompletedLog(typeIdentifier)
+            logMessage("  \(name): complete without an anchor (HealthKit cannot read it yet)")
+            return true
+        case .retryLater:
+            logMessage("  \(name): anchor capture failed - leaving type incomplete, pausing sync")
+            return false
         }
     }
     
@@ -1476,14 +1607,20 @@ public final class OpenWearablesHealthSDK: NSObject, URLSessionDelegate, URLSess
                 if self.isSyncCancelled(generation: generation) { completion(false, [], nil, false); return }
                 
                 if let error = error {
-                    if self.isProtectedDataError(error) {
+                    switch self.readFailure(of: error) {
+                    case .retryAfterUnlock:
                         self.logMessage("\(self.shortTypeName(type.identifier)): protected data inaccessible - pausing sync")
                         self.pendingSyncAfterUnlock = true
                         completion(false, [], nil, false)
-                        return
+                    case .unreadable:
+                        self.logMessage("\(self.shortTypeName(type.identifier)): \(error.localizedDescription) - skipping")
+                        completion(true, [], nil, true)
+                    case .retryLater:
+                        // Not "done": the export would mark the type complete with the rest
+                        // of its history unread. The cursor stays, the next run retries.
+                        self.logMessage("\(self.shortTypeName(type.identifier)): \(error.localizedDescription) - pausing sync")
+                        completion(false, [], nil, false)
                     }
-                    self.logMessage("\(self.shortTypeName(type.identifier)): \(error.localizedDescription) - skipping")
-                    completion(true, [], nil, true)
                     return
                 }
                 
@@ -1523,14 +1660,17 @@ public final class OpenWearablesHealthSDK: NSObject, URLSessionDelegate, URLSess
                 if self.isSyncCancelled(generation: generation) { completion(false, [], nil, nil, false); return }
                 
                 if let error = error {
-                    if self.isProtectedDataError(error) {
+                    switch self.readFailure(of: error) {
+                    case .retryAfterUnlock:
                         self.logMessage("\(self.shortTypeName(type.identifier)): protected data inaccessible - pausing sync")
                         self.pendingSyncAfterUnlock = true
                         completion(false, [], nil, nil, false)
-                        return
+                    case .unreadable, .retryLater:
+                        // Skipping returns no anchor, so the saved one stays and the next run
+                        // reads this type again; pausing would hold back every other type.
+                        self.logMessage("\(self.shortTypeName(type.identifier)): \(error.localizedDescription) - skipping")
+                        completion(true, [], nil, nil, true)
                     }
-                    self.logMessage("\(self.shortTypeName(type.identifier)): \(error.localizedDescription) - skipping")
-                    completion(true, [], nil, nil, true)
                     return
                 }
                 
@@ -1562,30 +1702,35 @@ public final class OpenWearablesHealthSDK: NSObject, URLSessionDelegate, URLSess
     
     // MARK: - Anchor Capture (for incremental sync after full export)
     
-    private func captureCurrentAnchor(for type: HKSampleType, completion: @escaping (HKQueryAnchor?) -> Void) {
+    private func captureCurrentAnchor(for type: HKSampleType, completion: @escaping (AnchorCaptureOutcome) -> Void) {
         logMessage("  \(shortTypeName(type.identifier)): saving anchor...")
         captureAnchorStep(type: type, anchor: nil, limit: 10000, completion: completion)
     }
     
-    private func captureAnchorStep(type: HKSampleType, anchor: HKQueryAnchor?, limit: Int, completion: @escaping (HKQueryAnchor?) -> Void) {
+    private func captureAnchorStep(type: HKSampleType, anchor: HKQueryAnchor?, limit: Int, completion: @escaping (AnchorCaptureOutcome) -> Void) {
         let syncPredicate: NSPredicate? = {
             guard let start = syncStartDate() else { return nil }
             return HKQuery.predicateForSamples(withStart: start, end: nil, options: [])
         }()
         let query = HKAnchoredObjectQuery(type: type, predicate: syncPredicate, anchor: anchor, limit: limit) {
             [weak self] _, samples, deletedObjects, newAnchor, error in
-            guard let self = self else { completion(nil); return }
+            guard let self = self else { completion(.retryLater); return }
             
             if let error = error {
-                // A failed step must not return a stale/nil anchor - the caller would
-                // persist it and the next incremental sync would re-crawl history.
-                if self.isProtectedDataError(error) {
+                // A failed step never returns a partial anchor: the caller would keep it
+                // and the next incremental sync would miss what lies past it.
+                switch self.readFailure(of: error) {
+                case .retryAfterUnlock:
                     self.logMessage("\(self.shortTypeName(type.identifier)): protected data inaccessible during anchor capture - will retry after unlock")
                     self.pendingSyncAfterUnlock = true
-                } else {
+                    completion(.retryLater)
+                case .unreadable:
                     self.logMessage("\(self.shortTypeName(type.identifier)): anchor capture failed - \(error.localizedDescription)")
+                    completion(.unreadable)
+                case .retryLater:
+                    self.logMessage("\(self.shortTypeName(type.identifier)): anchor capture failed - \(error.localizedDescription)")
+                    completion(.retryLater)
                 }
-                completion(nil)
                 return
             }
             
@@ -1594,8 +1739,10 @@ public final class OpenWearablesHealthSDK: NSObject, URLSessionDelegate, URLSess
             let count = (samples?.count ?? 0) + (deletedObjects?.count ?? 0)
             if count >= limit {
                 self.captureAnchorStep(type: type, anchor: newAnchor, limit: limit, completion: completion)
+            } else if let newAnchor = newAnchor {
+                completion(.captured(newAnchor))
             } else {
-                completion(newAnchor)
+                completion(.retryLater)
             }
         }
         healthStore.execute(query)
@@ -2162,7 +2309,7 @@ public final class OpenWearablesHealthSDK: NSObject, URLSessionDelegate, URLSess
         }
     }
     
-    // MARK: - Protected Data Error Detection
+    // MARK: - HealthKit Read Failures
     
     internal func isProtectedDataError(_ error: Error) -> Bool {
         let nsError = error as NSError
@@ -2172,6 +2319,38 @@ public final class OpenWearablesHealthSDK: NSObject, URLSessionDelegate, URLSess
         let msg = error.localizedDescription.lowercased()
         return msg.contains("protected health data") || msg.contains("inaccessible")
     }
+
+    /// What a failed HealthKit read means for a sync. Every read decides through this
+    /// one function: the full-export crawl, the incremental crawl, the anchor capture
+    /// after an export and the recent-window replay.
+    internal func readFailure(of error: Error) -> HealthKitReadFailure {
+        if isProtectedDataError(error) {
+            return .retryAfterUnlock
+        }
+        let nsError = error as NSError
+        if nsError.domain == HKErrorDomain && Self.unreadableTypeErrorCodes.contains(nsError.code) {
+            return .unreadable
+        }
+        return .retryLater
+    }
+
+    /// HealthKit errors that no retry fixes: authorization the user has not given (or
+    /// was never asked for), HealthKit unavailable or restricted on this device, a guest
+    /// user, or a query HealthKit rejects as invalid.
+    private static let unreadableTypeErrorCodes: Set<Int> = {
+        var codes: Set<Int> = [
+            HKError.Code.errorHealthDataUnavailable.rawValue,
+            HKError.Code.errorHealthDataRestricted.rawValue,
+            HKError.Code.errorInvalidArgument.rawValue,
+            HKError.Code.errorAuthorizationDenied.rawValue,
+            HKError.Code.errorAuthorizationNotDetermined.rawValue,
+            HKError.Code.errorRequiredAuthorizationDenied.rawValue,
+        ]
+        if #available(iOS 18.0, *) {
+            codes.insert(HKError.Code.errorNotPermissibleForGuestUserMode.rawValue)
+        }
+        return codes
+    }()
     
     // MARK: - Helpers
     
