@@ -10,7 +10,7 @@ It is a wrapper for the native iOS and Android SDKs to allow React Native apps t
 | Platform | Status                                                                        |
 | -------- | ----------------------------------------------------------------------------- |
 | iOS      | Implemented (bundled Rhise native SDK, requires iOS 15.1+)                    |
-| Android  | Implemented (via Maven Local dependency `com.openwearables.health:sdk:0.11.2`) |
+| Android  | Implemented (upstream Android SDK `v0.13.3`, built by JitPack)                 |
 
 ## Migration from 0.2.0–0.2.2
 
@@ -106,17 +106,17 @@ cd ios && pod install
 The RN pod compiles the vendored native iOS sources directly; no additional native SDK dependency
 or CocoaPods source is required.
 
-### Android (temporary setup)
+### Android
 
-The Android implementation currently relies on a local Maven dependency:
+The Android module depends on the upstream Android SDK, which is not on Maven Central. JitPack
+builds it from the upstream `v0.13.3` tag, and the module declares the JitPack repository itself:
 
 ```
-implementation("com.openwearables.health:sdk:0.11.2")
+maven { url "https://www.jitpack.io" }
+implementation("com.github.the-momentum.open_wearables_android_sdk:sdk:v0.13.3")
 ```
 
-To test the Android integration using `mavenLocal`, please refer to the setup instructions in the example app:
-
-👉 **[example/README.md](./example/README.md)**
+An app whose Gradle settings refuse project repositories must add the JitPack repository there.
 
 ## Config Plugin (optional)
 
@@ -390,8 +390,10 @@ Stops background sync.
 
 Triggers a fresh anchor-based incremental sync on iOS. If the initial historical export is still
 pending, it safely resumes in full-export mode; concurrent triggers are coalesced by the native
-single-flight guard. On Android this resolves without starting extra work because the Android SDK
-already receives the foreground lifecycle through `onForeground()`.
+single-flight guard. On Android, while sync is active and a session exists, it calls the native
+`startBackgroundSync()` with no argument: the stored `syncDaysBack` and the scheduled periodic work
+stay, and an incremental sync runs in-process; the promise resolves when it is done. Otherwise it
+logs why through `onLog` and resolves without syncing.
 
 #### `syncRecentWindow(sinceMillis: number, types?: HealthDataType[]): Promise<boolean>`
 
@@ -448,7 +450,7 @@ Returns the current sync status. Synchronous — no `await` needed.
 While `initialExportDone === false`, the historical backfill has not finished — prompt the user
 to keep the app open so the export can complete.
 
-The upload and outbox counters are optional because Android SDK `0.11.2` does not expose equivalent
+The upload and outbox counters are optional because Android SDK `0.13.3` does not expose equivalent
 diagnostics. `sentCount` remains the cross-platform health-sample progress counter; on iOS,
 `uploadedRecords` counts serialized payload entries instead and can therefore differ.
 

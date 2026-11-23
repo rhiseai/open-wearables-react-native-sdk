@@ -151,8 +151,21 @@ public class OpenWearablesModule : Module() {
     }
 
     AsyncFunction("syncNow") Coroutine { _: Unit? ->
-      // The Android SDK already receives the Expo foreground lifecycle through
-      // onForeground(); this explicit anchor-based trigger is currently iOS-only.
+      // The native has no syncNow. startBackgroundSync() with no argument keeps the
+      // stored syncDaysBack and the periodic work already scheduled (KEEP), then runs
+      // an incremental sync in this process instead of waiting for WorkManager, and
+      // returns when it is done, like iOS. It also switches sync on, so it only runs
+      // while sync is active and a session exists.
+      val sdk = OpenWearablesHealthSDK.getInstance()
+      if (!sdk.isSyncActive() || !sdk.isSessionValid()) {
+        sendEvent("onLog", mapOf("message" to "Cannot sync now: sync is not active or not signed in"))
+        return@Coroutine
+      }
+      try {
+        sdk.startBackgroundSync()
+      } catch (e: IllegalStateException) {
+        sendEvent("onLog", mapOf("message" to "Cannot sync now: ${e.message}"))
+      }
     }
 
     AsyncFunction("syncRecentWindow") Coroutine { _: Double?, _: List<String>? ->
