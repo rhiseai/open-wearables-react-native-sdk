@@ -64,7 +64,7 @@ npx expo run:ios
 
 The app will launch in the iOS simulator or on a connected device.
 
-### Android (testing with Maven Local)
+### Android
 
 Prerequisite: the Expo native project must already be generated.
 
@@ -72,38 +72,11 @@ Prerequisite: the Expo native project must already be generated.
 npx expo prebuild
 ```
 
-Steps to test the Android SDK using `mavenLocal`:
-
-1. Clone the Android SDK repository:
-
-```sh
-git clone https://github.com/the-momentum/open_wearables_android_sdk
-cd open_wearables_android_sdk
-```
-
-2. From the root of that repository, publish the SDK to Maven Local:
-
-```sh
-git checkout v0.11.1
-./gradlew publishToMavenLocal
-```
-
-3. In this example project, add `mavenLocal()` under `allprojects` → `repositories` (it must be first!) in:
-
-```
-example/android/build.gradle
-```
-
-Example:
-
-```gradle
-allprojects {
-  repositories {
-    mavenLocal()
-    ...
-  }
-}
-```
+The module resolves the Android SDK (`v0.13.3`) from JitPack, so no extra setup is needed. To test
+a local build of the Android SDK instead, publish it with `./gradlew publishToMavenLocal` from that
+repository, add `mavenLocal()` first under `allprojects` → `repositories` in
+`example/android/build.gradle`, and point the dependency in `../android/build.gradle` at the
+coordinate it published.
 
 Run the Android app (from the /example directory):
 
