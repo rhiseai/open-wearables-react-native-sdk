@@ -26,16 +26,30 @@ const withOpenWearablesIOS: ConfigPlugin<OpenWearablesIOSPluginProps> = (
     return config;
   });
 
-  // Add Info.plist usage descriptions & BGTask identifiers
+  // Add Info.plist usage descriptions & BGTask identifiers. The two arrays are
+  // merged into what the app and other plugins already declare (remote
+  // notifications, audio, their own BGTask ids) instead of replacing it.
   config = withInfoPlist(config, (config) => {
     config.modResults["NSHealthShareUsageDescription"] = healthShareUsage;
     config.modResults["NSHealthUpdateUsageDescription"] = healthUpdateUsage;
 
-    config.modResults["UIBackgroundModes"] = ["fetch", "processing"];
+    config.modResults["UIBackgroundModes"] = [
+      ...new Set([
+        ...(config.modResults["UIBackgroundModes"] ?? []),
+        "fetch",
+        "processing",
+      ]),
+    ];
 
     config.modResults["BGTaskSchedulerPermittedIdentifiers"] = [
-      "com.openwearables.healthsdk.task.refresh",
-      "com.openwearables.healthsdk.task.process",
+      ...new Set([
+        // Not one of the typed InfoPlist keys, so it reads as a JSON value.
+        ...((config.modResults["BGTaskSchedulerPermittedIdentifiers"] as
+          | string[]
+          | undefined) ?? []),
+        "com.openwearables.healthsdk.task.refresh",
+        "com.openwearables.healthsdk.task.process",
+      ]),
     ];
 
     return config;
