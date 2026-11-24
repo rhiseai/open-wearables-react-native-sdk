@@ -62,6 +62,13 @@ var HealthDataType;
     HealthDataType["DietaryCaffeine"] = "dietaryCaffeine";
     // Workout
     HealthDataType["Workout"] = "workout";
+    // Android only: Health Connect workout metrics and Samsung Health water intake.
+    // Health Connect also reads "water" as hydration.
+    HealthDataType["Water"] = "water";
+    HealthDataType["Power"] = "power";
+    HealthDataType["Speed"] = "speed";
+    HealthDataType["CyclingPedalingCadence"] = "cyclingPedalingCadence";
+    HealthDataType["TotalCaloriesBurned"] = "totalCaloriesBurned";
     // Aliases
     HealthDataType["RestingEnergy"] = "restingEnergy";
     HealthDataType["BloodOxygen"] = "bloodOxygen";

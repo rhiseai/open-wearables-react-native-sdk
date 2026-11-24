@@ -60,6 +60,11 @@ export declare enum HealthDataType {
     DietarySugar = "dietarySugar",
     DietaryCaffeine = "dietaryCaffeine",
     Workout = "workout",
+    Water = "water",
+    Power = "power",
+    Speed = "speed",
+    CyclingPedalingCadence = "cyclingPedalingCadence",
+    TotalCaloriesBurned = "totalCaloriesBurned",
     RestingEnergy = "restingEnergy",
     BloodOxygen = "bloodOxygen"
 }

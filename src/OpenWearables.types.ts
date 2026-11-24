@@ -80,6 +80,14 @@ export enum HealthDataType {
   // Workout
   Workout = "workout",
 
+  // Android only: Health Connect workout metrics and Samsung Health water intake.
+  // Health Connect also reads "water" as hydration.
+  Water = "water",
+  Power = "power",
+  Speed = "speed",
+  CyclingPedalingCadence = "cyclingPedalingCadence",
+  TotalCaloriesBurned = "totalCaloriesBurned",
+
   // Aliases
   RestingEnergy = "restingEnergy",
   BloodOxygen = "bloodOxygen",
