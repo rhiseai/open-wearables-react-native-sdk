@@ -30,13 +30,6 @@ internal enum OpenWearablesHealthProbe {
     internal static let defaultProbeLimit = 1
     internal static let maximumProbeLimit = 100
 
-    /// Same exclusion the native SDK applies in `getQueryableTypes()`. The blood
-    /// pressure correlation is never part of the requested read set, so asking
-    /// HealthKit about it would report `shouldRequest` forever.
-    private static let disallowedIdentifiers: Set<String> = [
-        HKCorrelationTypeIdentifier.bloodPressure.rawValue
-    ]
-
     internal static var isHealthDataAvailable: Bool {
         return HKHealthStore.isHealthDataAvailable()
     }
@@ -150,14 +143,14 @@ internal enum OpenWearablesHealthProbe {
         group.notify(queue: .main) { completion(counts) }
     }
 
+    /// The read set `requestAuthorization(types:)` asks for the same types, from the SDK
+    /// itself. A type it leaves out is never presented: the blood pressure correlation
+    /// (synced from its two quantity types), which would report `shouldRequest` forever,
+    /// and the food correlation, which HealthKit throws on in `requestAuthorization`.
     private static func readTypes(for rawTypes: [String]) -> Set<HKObjectType> {
-        var types = Set<HKObjectType>()
-        for rawType in rawTypes {
-            guard let sampleType = HealthDataType(rawValue: rawType)?.toHKSampleType(),
-                  !disallowedIdentifiers.contains(sampleType.identifier) else { continue }
-            types.insert(sampleType)
-        }
-        return types
+        let sdk = OpenWearablesHealthSDK.shared
+        let requested = sdk.mapTypes(rawTypes.compactMap { HealthDataType(rawValue: $0) })
+        return Set(sdk.typesForAuthorization(of: requested))
     }
 
     private static func resolve(
